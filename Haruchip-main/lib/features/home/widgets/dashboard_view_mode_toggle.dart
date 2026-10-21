@@ -25,10 +25,15 @@ class DashboardViewModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    // 내용 폭만큼만 차지 (대시보드에서 오른쪽 [순서 편집] 버튼과 한 줄에 놓이도록),
+    // 아주 좁은 폰·큰 글씨에서는 라벨과 토글이 두 줄로.
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 0, // 원래 배치와 동일 (라벨과 토글 사이 간격 없음)
+      runSpacing: 6,
       children: [
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
               Icons.auto_awesome_rounded,
@@ -54,6 +59,7 @@ class DashboardViewModeToggle extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               _ToggleButton(
                 label: '세로형',

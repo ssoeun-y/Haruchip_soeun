@@ -96,7 +96,8 @@ class _TopAppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
+          Expanded(
+            child: Row(
             children: [
               Container(
                 width: 36,
@@ -116,28 +117,36 @@ class _TopAppBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '하루칩',
-                    style: AppTypography.cardLabel.copyWith(
-                      color: AppColors.protoHeading,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '하루칩',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.cardLabel.copyWith(
+                        color: AppColors.protoHeading,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'HaruChip Life & D-Day',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.protoStepLabel,
-                      fontWeight: FontWeight.w500,
+                    Text(
+                      'HaruChip Life & D-Day',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.protoStepLabel,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
+          ),
+          const SizedBox(width: 8),
           Row(
             children: [
               _IconButtonBadge(

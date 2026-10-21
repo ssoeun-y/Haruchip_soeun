@@ -70,7 +70,11 @@ class RoomCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                InkWell(
+                // 남는 폭만 쓰고, 좁으면 코드가 말줄임 — 오른쪽 "n명 참여 중"은 항상 보인다.
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: room.inviteCode));
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -79,13 +83,18 @@ class RoomCard extends StatelessWidget {
                   },
                   borderRadius: BorderRadius.circular(6),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        '코드: ${room.inviteCode}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF94A3B8),
+                      Flexible(
+                        child: Text(
+                          '코드: ${room.inviteCode}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 3),
@@ -93,7 +102,9 @@ class RoomCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Spacer(),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -226,9 +237,13 @@ class RoomCard extends StatelessWidget {
                               ),
                               if (ev.location != null) ...[
                                 const SizedBox(width: 6),
-                                Text(
-                                  '📍 ${ev.location}',
-                                  style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                                Flexible(
+                                  child: Text(
+                                    '📍 ${ev.location}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                                  ),
                                 ),
                               ],
                             ],
@@ -240,15 +255,19 @@ class RoomCard extends StatelessWidget {
                       children: [
                         const Icon(Icons.event_available_rounded, size: 16, color: Color(0xFF94A3B8)),
                         const SizedBox(width: 6),
-                        const Text(
-                          '오늘 예정된 모임 일정이 없습니다',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                            fontWeight: FontWeight.w500,
+                        const Expanded(
+                          child: Text(
+                            '오늘 예정된 모임 일정이 없습니다',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 6),
                         const Text(
                           '탭하여 조율하기 >',
                           style: TextStyle(

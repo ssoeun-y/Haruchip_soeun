@@ -115,6 +115,12 @@ class _ExamCardWidgetState extends State<ExamCardWidget> {
                   // 상단 메타 라인 (이모지, 카테고리 태그, 목표점수, 메뉴)
                   Row(
                     children: [
+                      // 분류·목표 칩이 길면 다음 줄로 (오른쪽 메뉴 버튼 자리는 유지)
+                      Expanded(
+                        child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 4,
+                      children: [
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
@@ -164,7 +170,9 @@ class _ExamCardWidgetState extends State<ExamCardWidget> {
                           ),
                         ),
                       ],
-                      const Spacer(),
+                      ],
+                        ),
+                      ),
                       // 메뉴 버튼
                       PopupMenuButton<String>(
                         icon: const Icon(Icons.more_horiz_rounded, color: Color(0xFF94A3B8), size: 20),

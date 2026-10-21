@@ -69,25 +69,32 @@ class _RoutineCategoryViewState extends State<RoutineCategoryView> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Text('⏱️', style: TextStyle(fontSize: 16)),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '다음 루틴 일정',
-                          style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Text('⏱️', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '다음 루틴 일정',
+                              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                            ),
+                            Text(
+                              closest.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ],
                         ),
-                        Text(
-                          closest.title,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
@@ -114,7 +121,13 @@ class _RoutineCategoryViewState extends State<RoutineCategoryView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
+            // 아주 좁은 폰·큰 글씨에서만 토글을 살짝 줄여 한 줄에 맞춘다.
+            Flexible(
+              flex: 3,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Container(
               height: 36,
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
@@ -180,9 +193,18 @@ class _RoutineCategoryViewState extends State<RoutineCategoryView> {
                 ],
               ),
             ),
-            Text(
-              '총 ${widget.routines.length}개 루틴',
-              style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              flex: 2,
+              child: Text(
+                '총 ${widget.routines.length}개 루틴',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),

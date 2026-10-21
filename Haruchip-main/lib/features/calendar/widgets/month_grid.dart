@@ -110,7 +110,10 @@ class _MonthGridState extends State<MonthGrid> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+              Expanded(
+                child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 4,
                 children: [
                   Text(
                     '${widget.focusedMonth.year}년 ${widget.focusedMonth.month}월',
@@ -141,6 +144,7 @@ class _MonthGridState extends State<MonthGrid> {
                     ),
                   ),
                 ],
+                ),
               ),
               Row(
                 children: [
@@ -261,7 +265,12 @@ class _MonthGridState extends State<MonthGrid> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
+                          // 아주 좁은 폰·큰 글씨에서는 칸보다 숫자가 커질 수 있어 살짝 줄여 맞춘다.
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                             decoration: isToday
                                 ? BoxDecoration(
@@ -278,6 +287,8 @@ class _MonthGridState extends State<MonthGrid> {
                                 color: dayTextColor,
                                 fontSize: 11.5,
                               ),
+                            ),
+                          ),
                             ),
                           ),
                           if (holidayName != null)

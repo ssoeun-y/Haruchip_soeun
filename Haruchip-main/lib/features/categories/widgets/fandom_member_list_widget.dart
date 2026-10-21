@@ -80,7 +80,8 @@ class FandomMemberListWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+              Expanded(
+                child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(6),
@@ -91,12 +92,14 @@ class FandomMemberListWidget extends StatelessWidget {
                     child: const Text('👑', style: TextStyle(fontSize: 14)),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    '멤버 프로필 & 최애 순위',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.protoHeading,
+                  const Flexible(
+                    child: Text(
+                      '멤버 프로필 & 최애 순위',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.protoHeading,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -109,7 +112,9 @@ class FandomMemberListWidget extends StatelessWidget {
                     ),
                   ),
                 ],
+                ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: () => _showAddOrEditMemberDialog(context),
                 borderRadius: BorderRadius.circular(8),

@@ -134,12 +134,16 @@ class SoloTopCardWidget extends StatelessWidget {
                       children: [
                         const Text('🌱', style: TextStyle(fontSize: 14)),
                         const SizedBox(width: 6),
-                        Text(
-                          '나를 위한 시간',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isSelfCare ? FontWeight.bold : FontWeight.w500,
-                            color: isSelfCare ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                        Flexible(
+                          child: Text(
+                            '나를 위한 시간',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelfCare ? FontWeight.bold : FontWeight.w500,
+                              color: isSelfCare ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                            ),
                           ),
                         ),
                       ],
@@ -176,12 +180,16 @@ class SoloTopCardWidget extends StatelessWidget {
                       children: [
                         const Text('💌', style: TextStyle(fontSize: 14)),
                         const SizedBox(width: 6),
-                        Text(
-                          '마음 진행 중',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: !isSelfCare ? FontWeight.bold : FontWeight.w500,
-                            color: !isSelfCare ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                        Flexible(
+                          child: Text(
+                            '마음 진행 중',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: !isSelfCare ? FontWeight.bold : FontWeight.w500,
+                              color: !isSelfCare ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                            ),
                           ),
                         ),
                       ],
@@ -293,12 +301,14 @@ class SoloTopCardWidget extends StatelessWidget {
                       children: [
                         Icon(Icons.calendar_today_rounded, size: 13, color: themeColor),
                         const SizedBox(width: 6),
-                        Text(
-                          '시작일: ${_formatDate(profile.activeStartDate)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF334155),
+                        Flexible(
+                          child: Text(
+                            '시작일: ${_formatDate(profile.activeStartDate)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF334155),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 4),
@@ -346,20 +356,25 @@ class SoloTopCardWidget extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Row(
-              children: [
-                Text('✨', style: TextStyle(fontSize: 14)),
-                SizedBox(width: 6),
-                Text(
-                  '나만의 갓생 & 플랜 빠른 태그',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+            const Expanded(
+              child: Row(
+                children: [
+                  Text('✨', style: TextStyle(fontSize: 14)),
+                  SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '나만의 갓생 & 플랜 빠른 태그',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 6),
             TextButton.icon(
               onPressed: () => _showAddTagDialog(context),
               icon: const Icon(Icons.add, size: 14),

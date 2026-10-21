@@ -313,8 +313,13 @@ class _TrashBinScreenState extends ConsumerState<TrashBinScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Header: Entity Badge & Remaining Days Countdown
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            // (Wrap은 내용 폭만큼만 차지 — 남은 기간 배지가 오른쪽 끝에 붙도록 가로를 채움)
+                            SizedBox(
+                              width: double.infinity,
+                              child: Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              spacing: 8,
+                              runSpacing: 4,
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -354,6 +359,7 @@ class _TrashBinScreenState extends ConsumerState<TrashBinScreen> {
                                   ),
                                 ),
                               ],
+                            ),
                             ),
                             const SizedBox(height: 10),
 

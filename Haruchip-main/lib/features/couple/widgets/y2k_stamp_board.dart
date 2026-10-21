@@ -49,20 +49,25 @@ class Y2KStampBoard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Text('💮', style: TextStyle(fontSize: 18)),
-                  SizedBox(width: 6),
-                  Text(
-                    '참 잘했어요 칭찬 도장판',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
-                      color: Color(0xFF882046),
+              const Expanded(
+                child: Row(
+                  children: [
+                    Text('💮', style: TextStyle(fontSize: 18)),
+                    SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        '참 잘했어요 칭찬 도장판',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                          color: Color(0xFF882046),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(

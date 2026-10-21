@@ -170,24 +170,29 @@ class _AppointmentCategoryViewState extends State<AppointmentCategoryView> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time_rounded,
-                            size: 14,
-                            color: isToday ? const Color(0xFF2563EB) : const Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            '${appointment.formattedDate} · ${appointment.formattedTime}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.access_time_rounded,
+                              size: 14,
                               color: isToday ? const Color(0xFF2563EB) : const Color(0xFF64748B),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                '${appointment.formattedDate} · ${appointment.formattedTime}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+                                  color: isToday ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
@@ -291,15 +296,19 @@ class _AppointmentCategoryViewState extends State<AppointmentCategoryView> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.checklist_rounded, size: 16, color: Color(0xFF64748B)),
-                        const SizedBox(width: 6),
-                        Text(
-                          '준비물 / 할 일 ($doneSubTaskCount / $totalSubTaskCount)',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                        ),
-                      ],
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.checklist_rounded, size: 16, color: Color(0xFF64748B)),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              '준비물 / 할 일 ($doneSubTaskCount / $totalSubTaskCount)',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     Icon(
                       isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,

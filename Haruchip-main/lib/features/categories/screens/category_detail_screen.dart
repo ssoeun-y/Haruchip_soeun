@@ -1424,20 +1424,25 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.event_note_rounded, size: 18, color: AppColors.protoHeading),
-                          const SizedBox(width: 6),
-                          Text(
-                            '세부 D-Day 리스트',
-                            style: AppTypography.cardLabel.copyWith(
-                              color: AppColors.protoHeading,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.event_note_rounded, size: 18, color: AppColors.protoHeading),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                '세부 D-Day 리스트',
+                                style: AppTypography.cardLabel.copyWith(
+                                  color: AppColors.protoHeading,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 6),
                       Text(
                         '총 ${countDownItems.length}개',
                         style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -1961,11 +1966,14 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: friends.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          // 폭 비례(childAspectRatio)면 좁은 폰에서 카드가 낮아져 내용이 넘친다 —
+          // 사진·여백(140)은 고정, 글자 부분(76 — 좁은 폰에서 날짜가 두 줄이 되는 경우 포함)은
+          // 폰의 글씨 크기 설정만큼 키운다.
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.88,
+            mainAxisExtent: 140 + MediaQuery.textScalerOf(context).scale(76),
           ),
           itemBuilder: (context, index) {
             final friend = friends[index];
@@ -2048,16 +2056,17 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
       children: [
         // 상단 요약 & 빠른 액션 바
         Container(
+          // Wrap은 내용 폭만큼만 차지하므로, 버튼이 오른쪽 끝에 붙도록 가로를 꽉 채운다.
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
+          // 한 줄 유지 — 좁으면 제목과 개수 배지가 말줄임으로 줄어들고, 오른쪽 버튼은 그대로.
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 좁은 폭에서 오른쪽 버튼과 겹치지 않도록 제목 쪽이 남는 폭만 쓴다.
               Expanded(
                 child: Row(
                 children: [
@@ -2076,7 +2085,8 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Container(
+                  Flexible(
+                    child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
@@ -2084,6 +2094,8 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                     ),
                     child: Text(
                       '총 ${exams.length}개',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -2091,11 +2103,13 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                       ),
                     ),
                   ),
+                  ),
                 ],
-                ),
+              ),
               ),
               const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   InkWell(
                     onTap: _openExamOfficialDbModal,

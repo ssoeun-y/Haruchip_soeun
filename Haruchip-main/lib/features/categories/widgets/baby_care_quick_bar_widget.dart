@@ -75,7 +75,10 @@ class BabyCareQuickBarWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+              Expanded(
+                child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 4,
                 children: [
                   const Text(
                     '⚡ 원터치 케어 타임로그',
@@ -102,7 +105,9 @@ class BabyCareQuickBarWidget extends StatelessWidget {
                     ),
                   ),
                 ],
+                ),
               ),
+              const SizedBox(width: 6),
               InkWell(
                 onTap: onOpenCareHistory,
                 borderRadius: BorderRadius.circular(8),

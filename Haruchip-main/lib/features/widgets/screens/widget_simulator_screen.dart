@@ -100,12 +100,14 @@ class _WidgetSimulatorScreenState extends ConsumerState<WidgetSimulatorScreen> {
                     children: [
                       const Text('💡', style: TextStyle(fontSize: 18)),
                       const SizedBox(width: 8),
-                      Text(
-                        '스마트폰 홈/잠금화면에 위젯 추가하는 법',
-                        style: AppTypography.cardLabel.copyWith(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.protoHeading,
+                      Flexible(
+                        child: Text(
+                          '스마트폰 홈/잠금화면에 위젯 추가하는 법',
+                          style: AppTypography.cardLabel.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.protoHeading,
+                          ),
                         ),
                       ),
                     ],
@@ -203,9 +205,14 @@ class _WidgetSimulatorScreenState extends ConsumerState<WidgetSimulatorScreen> {
               children: [
                 const Text('💍', style: TextStyle(fontSize: 13)),
                 const SizedBox(width: 6),
-                Text(
-                  '${topItem.title} ${dDayLabel(topItem.date)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                // 실제 잠금화면 한 줄 위젯처럼 길면 말줄임
+                Flexible(
+                  child: Text(
+                    '${topItem.title} ${dDayLabel(topItem.date)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -256,7 +263,10 @@ class _WidgetSimulatorScreenState extends ConsumerState<WidgetSimulatorScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                 ),
-                child: Column(
+                // 원형 위젯은 크기가 고정이라 큰 글씨 설정에서도 원 안에 맞춰 줄인다.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -266,6 +276,7 @@ class _WidgetSimulatorScreenState extends ConsumerState<WidgetSimulatorScreen> {
                       style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900),
                     ),
                   ],
+                ),
                 ),
               ),
             ],

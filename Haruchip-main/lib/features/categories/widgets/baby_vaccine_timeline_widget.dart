@@ -88,20 +88,27 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Text('💉', style: TextStyle(fontSize: 18)),
-                  SizedBox(width: 8),
-                  Text(
-                    '국가 표준 필수 예방접종',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.protoHeading,
+              const Expanded(
+                child: Row(
+                  children: [
+                    Text('💉', style: TextStyle(fontSize: 18)),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '국가 표준 필수 예방접종',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.protoHeading,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -209,7 +216,9 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              runSpacing: 2,
                               children: [
                                 Text(
                                   dose.name,

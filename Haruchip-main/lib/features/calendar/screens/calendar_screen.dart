@@ -280,20 +280,27 @@ class CalendarScreen extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.event_note_rounded, size: 17, color: AppColors.protoHeading),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${selectedDate.month}월 ${selectedDate.day}일 일정 (${events.length})',
-                                style: AppTypography.cardLabel.copyWith(
-                                  color: AppColors.protoHeading,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.event_note_rounded, size: 17, color: AppColors.protoHeading),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    '${selectedDate.month}월 ${selectedDate.day}일 일정 (${events.length})',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTypography.cardLabel.copyWith(
+                                      color: AppColors.protoHeading,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 6),
                           InkWell(
                             onTap: () => showAddEventBottomSheet(
                               context,

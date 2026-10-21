@@ -427,14 +427,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('고유 유저 식별 코드', style: TextStyle(fontSize: 13, color: AppColors.protoSubtitle, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 4),
-                          Text(_userUniqueCode, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.protoHeading, letterSpacing: 0.5)),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('고유 유저 식별 코드', style: TextStyle(fontSize: 13, color: AppColors.protoSubtitle, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 4),
+                            Text(_userUniqueCode, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.protoHeading, letterSpacing: 0.5)),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: _copyUserCode,
                         icon: const Icon(Icons.copy_rounded, size: 14),
@@ -449,12 +452,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                   const Divider(height: 24, color: Color(0xFFF3F4F6)),
-                  Row(
+                  // 좁은 폰에서는 칩이 다음 줄로
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       _buildSocialChip('카카오', '연동됨', const Color(0xFFFEE500), Colors.black87),
-                      const SizedBox(width: 8),
                       _buildSocialChip('구글', '연동됨', const Color(0xFFEA4335), Colors.white),
-                      const SizedBox(width: 8),
                       _buildSocialChip('네이버', '미연동', const Color(0xFFE5E7EB), const Color(0xFF6B7280)),
                     ],
                   ),
@@ -706,7 +710,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('아침 브리핑 알림 시각', style: TextStyle(fontSize: 13, color: AppColors.protoSubtitle, fontWeight: FontWeight.w600)),
+                          const Expanded(
+                            child: Text('아침 브리핑 알림 시각', style: TextStyle(fontSize: 13, color: AppColors.protoSubtitle, fontWeight: FontWeight.w600)),
+                          ),
                           Row(
                             children: [
                               Text(

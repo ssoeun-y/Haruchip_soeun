@@ -520,10 +520,13 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                r.title,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                              Expanded(
+                                child: Text(
+                                  r.title,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               Text(
                                 '${r.totalAmount}원',
                                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
@@ -589,18 +592,26 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              '${d.member.icon} ${d.member.name}',
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                            Expanded(
+                              child: Text(
+                                '${d.member.icon} ${d.member.name}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                              ),
                             ),
-                            const Spacer(),
-                            Column(
+                            const SizedBox(width: 8),
+                            // 금액은 자르지 않는다 — 좁으면 줄바꿈해서 다 보이게
+                            Flexible(
+                              flex: 2,
+                              child: Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
                                   d.netBalance >= 0
                                       ? '+${d.netBalance}원 (받을 돈)'
                                       : '${d.netBalance}원 (보낼 돈)',
+                                  textAlign: TextAlign.right,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
@@ -609,9 +620,11 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                                 ),
                                 Text(
                                   '결제: ${d.totalPaid}원 | 부담: ${d.totalOwed}원',
+                                  textAlign: TextAlign.right,
                                   style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
                                 ),
                               ],
+                            ),
                             ),
                           ],
                         ),
@@ -664,17 +677,26 @@ class _SettlementScreenState extends ConsumerState<SettlementScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              '${iconOf(tx.from)} ${nameOf(tx.from)}',
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                            // 이름이 길면 말줄임 — 금액(오른쪽)은 항상 다 보이게
+                            Flexible(
+                              child: Text(
+                                '${iconOf(tx.from)} ${nameOf(tx.from)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              ),
                             ),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 8),
                               child: Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF94A3B8)),
                             ),
-                            Text(
-                              '${iconOf(tx.to)} ${nameOf(tx.to)}',
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                            Flexible(
+                              child: Text(
+                                '${iconOf(tx.to)} ${nameOf(tx.to)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              ),
                             ),
                             const Spacer(),
                             Text(

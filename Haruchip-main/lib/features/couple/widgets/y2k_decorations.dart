@@ -306,20 +306,25 @@ class Y2KJellyProgressBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text('🍓', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 6),
-                  const Text(
-                    '오늘의 달성률',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: Color(0xFF882046),
+              const Expanded(
+                child: Row(
+                  children: [
+                    Text('🍓', style: TextStyle(fontSize: 16)),
+                    SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        '오늘의 달성률',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: Color(0xFF882046),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(

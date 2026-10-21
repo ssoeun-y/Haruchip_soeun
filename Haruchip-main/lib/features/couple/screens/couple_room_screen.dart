@@ -109,11 +109,13 @@ class _CoupleRoomScreenState extends ConsumerState<CoupleRoomScreen> with Single
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
+                            Expanded(
+                              child: Row(
                               children: [
                                 const Text('🍓', style: TextStyle(fontSize: 22)),
                                 const SizedBox(width: 6),
-                                Column(
+                                Expanded(
+                                  child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
@@ -134,7 +136,9 @@ class _CoupleRoomScreenState extends ConsumerState<CoupleRoomScreen> with Single
                                     ),
                                   ],
                                 ),
+                                ),
                               ],
+                            ),
                             ),
                             // BGM / SFX 음소거 토글
                             IconButton(
@@ -186,7 +190,8 @@ class _CoupleRoomScreenState extends ConsumerState<CoupleRoomScreen> with Single
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                               ),
-                              GestureDetector(
+                              Flexible(
+                                child: GestureDetector(
                                 onTap: _pickDate,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -199,13 +204,17 @@ class _CoupleRoomScreenState extends ConsumerState<CoupleRoomScreen> with Single
                                     children: [
                                       const Icon(Icons.calendar_today_rounded, size: 13, color: Color(0xFFFF4081)),
                                       const SizedBox(width: 6),
-                                      Text(
+                                      Flexible(
+                                        child: Text(
                                         '${selectedDate.year}년 ${selectedDate.month}월 ${selectedDate.day}일',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.w800,
                                           color: Color(0xFF882046),
                                         ),
+                                      ),
                                       ),
                                       if (selectedDate.year == DateTime.now().year &&
                                           selectedDate.month == DateTime.now().month &&
@@ -232,6 +241,7 @@ class _CoupleRoomScreenState extends ConsumerState<CoupleRoomScreen> with Single
                                     ],
                                   ),
                                 ),
+                              ),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.chevron_right_rounded, color: Color(0xFFFF4081), size: 24),
@@ -335,12 +345,14 @@ class _CoupleRoomScreenState extends ConsumerState<CoupleRoomScreen> with Single
                   children: [
                     Text('📝', style: TextStyle(fontSize: 18)),
                     SizedBox(width: 6),
-                    Text(
-                      '오늘의 할 일 체크리스트',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                        color: Color(0xFF882046),
+                    Flexible(
+                      child: Text(
+                        '오늘의 할 일 체크리스트',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                          color: Color(0xFF882046),
+                        ),
                       ),
                     ),
                   ],

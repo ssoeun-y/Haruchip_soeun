@@ -321,13 +321,23 @@ class CategorySummaryDashboardCard extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '복무율 $progressPercent%',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: palette.primary),
+            Flexible(
+              child: Text(
+                '복무율 $progressPercent%',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: palette.primary),
+              ),
             ),
-            Text(
-              '전역 $dischargeDday',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: palette.text),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                '전역 $dischargeDday',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: palette.text),
+              ),
             ),
           ],
         ),

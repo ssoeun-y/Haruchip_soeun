@@ -240,7 +240,8 @@ class _CoupleCategoryDetailScreenState extends ConsumerState<CoupleCategoryDetai
                                         Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Text(
+                                            Flexible(
+                                              child: Text(
                                               '${couple.startDate.year}.${couple.startDate.month.toString().padLeft(2, '0')}.${couple.startDate.day.toString().padLeft(2, '0')} ~ ing',
                                               style: TextStyle(
                                                 fontFamily: typo.fontFamily,
@@ -249,6 +250,7 @@ class _CoupleCategoryDetailScreenState extends ConsumerState<CoupleCategoryDetai
                                                 color: hasImage ? Colors.white70 : customTextColor.withValues(alpha: 0.8),
                                                 shadows: hasImage ? const [Shadow(color: Colors.black45, blurRadius: 2)] : null,
                                               ),
+                                            ),
                                             ),
                                             const SizedBox(width: 4),
                                             Icon(Icons.edit_calendar, size: 14, color: hasImage ? Colors.white70 : customTextColor.withValues(alpha: 0.8)),

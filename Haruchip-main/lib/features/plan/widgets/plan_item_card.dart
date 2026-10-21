@@ -84,7 +84,7 @@ class PlanItemCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Row(
+                Wrap(
                   children: [
                     Text(
                       _categoryLabel,

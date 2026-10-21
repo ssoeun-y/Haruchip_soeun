@@ -129,19 +129,24 @@ class _GoalCategoryViewState extends State<GoalCategoryView> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text('🎯', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 8),
-                  Text(
-                    '전체 목표 달성률',
-                    style: AppTypography.caption.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.protoHeading,
+              Expanded(
+                child: Row(
+                  children: [
+                    const Text('🎯', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '전체 목표 달성률',
+                        style: AppTypography.caption.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.protoHeading,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 '$completedCount / $totalCount 달성 (${totalCount > 0 ? ((completedCount / totalCount) * 100).toInt() : 0}%)',
                 style: const TextStyle(
@@ -347,7 +352,14 @@ class _GoalCategoryViewState extends State<GoalCategoryView> {
                       children: [
                         Icon(Icons.calendar_today, size: 10, color: Color(0xFF64748B)),
                         SizedBox(width: 3),
-                        Text('캘린더 연동됨', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                        Flexible(
+                          child: Text(
+                            '캘린더 연동됨',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                          ),
+                        ),
                       ],
                     ),
                   ],

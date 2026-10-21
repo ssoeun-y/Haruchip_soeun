@@ -450,9 +450,13 @@ class _ScheduleRoomDetailScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${_selectedCalendarDate.month}월 ${_selectedCalendarDate.day}일 공유 일정',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+              Expanded(
+                child: Text(
+                  '${_selectedCalendarDate.month}월 ${_selectedCalendarDate.day}일 공유 일정',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                ),
               ),
               TextButton.icon(
                 onPressed: () async {
@@ -1542,8 +1546,10 @@ class _ScheduleRoomDetailScreenState
                 ),
               ],
               const Spacer(),
-              // Realtime Countdown Timer
-              Container(
+              // Realtime Countdown Timer — 좁은 폭에서는 남은 시간 글자를 말줄임
+              Flexible(
+                flex: 4,
+                child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: isClosed ? const Color(0xFFF1F5F9) : const Color(0xFFFEF2F2),
@@ -1558,16 +1564,21 @@ class _ScheduleRoomDetailScreenState
                       color: isClosed ? const Color(0xFF64748B) : const Color(0xFFDC2626),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      vote.remainingTimeLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: isClosed ? const Color(0xFF64748B) : const Color(0xFFDC2626),
+                    Flexible(
+                      child: Text(
+                        vote.remainingTimeLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isClosed ? const Color(0xFF64748B) : const Color(0xFFDC2626),
+                        ),
                       ),
                     ),
                   ],
                 ),
+              ),
               ),
               if (isCreator) ...[
                 const SizedBox(width: 4),
@@ -1761,9 +1772,11 @@ class _ScheduleRoomDetailScreenState
                   children: [
                     Icon(Icons.account_balance_wallet_outlined, size: 20, color: Color(0xFF0F172A)),
                     SizedBox(width: 8),
-                    Text(
-                      '스마트 N차 정산 및 송금 장부',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                    Flexible(
+                      child: Text(
+                        '스마트 N차 정산 및 송금 장부',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                      ),
                     ),
                   ],
                 ),
@@ -1803,10 +1816,13 @@ class _ScheduleRoomDetailScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                '🧾 정산 영수증 히스토리',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+              const Expanded(
+                child: Text(
+                  '🧾 정산 영수증 히스토리',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 '총 ${history.length}건',
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
@@ -1862,7 +1878,8 @@ class _ScheduleRoomDetailScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
+              Expanded(
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -1875,6 +1892,7 @@ class _ScheduleRoomDetailScreenState
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                   ),
                 ],
+              ),
               ),
               Row(
                 children: [
@@ -2021,9 +2039,11 @@ class _ScheduleRoomDetailScreenState
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  isExpanded ? '차수별 상세 내역 접기' : '차수별 상세 내역 보기 (${record.rounds.length}개 차수)',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                Flexible(
+                  child: Text(
+                    isExpanded ? '차수별 상세 내역 접기' : '차수별 상세 내역 보기 (${record.rounds.length}개 차수)',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                  ),
                 ),
                 Icon(
                   isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,

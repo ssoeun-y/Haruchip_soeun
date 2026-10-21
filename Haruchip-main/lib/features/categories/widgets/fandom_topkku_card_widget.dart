@@ -533,27 +533,32 @@ class _FandomTopkkuCardWidgetState extends State<FandomTopkkuCardWidget>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFAF5FF),
-                      borderRadius: BorderRadius.circular(8),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAF5FF),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text('✨', style: TextStyle(fontSize: 14)),
                     ),
-                    child: const Text('✨', style: TextStyle(fontSize: 14)),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    '포토카드 탑꾸 (Toploader)',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.protoHeading,
+                    const SizedBox(width: 8),
+                    const Flexible(
+                      child: Text(
+                        '포토카드 탑꾸 (Toploader)',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.protoHeading,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: _exportTopkkuImage,
                 borderRadius: BorderRadius.circular(8),
@@ -815,8 +820,11 @@ class _FandomTopkkuCardWidgetState extends State<FandomTopkkuCardWidget>
           const SizedBox(height: 14),
 
           // Action Toolbar for Toploader (Photo Change, Stickers, Overlay Text)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          // 버튼 3개가 폰 폭보다 넓어서(430에서도) 자리가 모자라면 다음 줄로.
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _buildToolButton(
                 icon: Icons.image_rounded,
