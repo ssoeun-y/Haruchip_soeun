@@ -97,12 +97,16 @@ class _JoinRoomDialogState extends ConsumerState<_JoinRoomDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '🔑 모임 방 참가하기',
-                  style: AppTypography.heading2.copyWith(
-                    color: AppColors.protoHeading,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    '🔑 모임 방 참가하기',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.heading2.copyWith(
+                      color: AppColors.protoHeading,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 IconButton(

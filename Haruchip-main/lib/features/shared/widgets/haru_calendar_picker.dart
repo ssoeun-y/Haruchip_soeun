@@ -191,11 +191,15 @@ class _HaruCalendarPickerState extends State<HaruCalendarPicker> {
           constraints: const BoxConstraints(),
           onPressed: _previousMonth,
         ),
-        InkWell(
+        // 좁은 폰·큰 글씨에서는 "YYYY년 M월"을 자르지 않고 살짝 줄여서 보여준다
+        Flexible(
+          child: InkWell(
           onTap: _showYearMonthSelector,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+            child: FittedBox(
+            fit: BoxFit.scaleDown,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -215,7 +219,9 @@ class _HaruCalendarPickerState extends State<HaruCalendarPicker> {
                 ),
               ],
             ),
+            ),
           ),
+        ),
         ),
         IconButton(
           icon: const Icon(Icons.chevron_right_rounded, color: AppColors.textPrimary, size: 28),

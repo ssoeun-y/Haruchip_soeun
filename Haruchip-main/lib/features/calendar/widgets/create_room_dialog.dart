@@ -98,12 +98,16 @@ class _CreateRoomDialogState extends ConsumerState<_CreateRoomDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '✨ 새 모임 방 만들기',
-                  style: AppTypography.heading2.copyWith(
-                    color: AppColors.protoHeading,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    '✨ 새 모임 방 만들기',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.heading2.copyWith(
+                      color: AppColors.protoHeading,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 IconButton(

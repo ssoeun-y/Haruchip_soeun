@@ -176,19 +176,25 @@ class _Y2KStickerDrawerContentState extends State<_Y2KStickerDrawerContent> with
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Text('🎀', style: TextStyle(fontSize: 20)),
-                    SizedBox(width: 8),
-                    Text(
-                      'Y2K 슈게임 스티커북 서랍',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF882046),
+                const Expanded(
+                  child: Row(
+                    children: [
+                      Text('🎀', style: TextStyle(fontSize: 20)),
+                      SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Y2K 슈게임 스티커북 서랍',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF882046),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded, color: Colors.grey),

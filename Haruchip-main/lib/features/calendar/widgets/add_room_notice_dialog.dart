@@ -98,12 +98,16 @@ class _AddRoomNoticeDialogState extends State<_AddRoomNoticeDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  isEditing ? '📌 공지 / 메모 수정' : '📌 공지 / 메모 등록',
-                  style: AppTypography.cardLabel.copyWith(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.protoHeading,
+                Expanded(
+                  child: Text(
+                    isEditing ? '📌 공지 / 메모 수정' : '📌 공지 / 메모 등록',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.cardLabel.copyWith(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.protoHeading,
+                    ),
                   ),
                 ),
                 IconButton(

@@ -169,12 +169,16 @@ class _AddRoutineModalState extends State<_AddRoutineModal> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        isEditing ? '루틴 / 주간 일정 수정' : '새 루틴 / 주간 일정 추가',
-                        style: AppTypography.heading2.copyWith(
-                          color: AppColors.protoHeading,
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          isEditing ? '루틴 / 주간 일정 수정' : '새 루틴 / 주간 일정 추가',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.heading2.copyWith(
+                            color: AppColors.protoHeading,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       IconButton(
@@ -362,7 +366,8 @@ class _AddRoutineModalState extends State<_AddRoutineModal> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      runSpacing: 8,
                       children: _colorPresets.map((hex) {
                         final isSelected = _colorHex.toLowerCase() == hex.toLowerCase();
                         final color = Color(int.parse('0xFF${hex.replaceAll('#', '')}'));

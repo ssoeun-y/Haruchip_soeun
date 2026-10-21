@@ -78,9 +78,13 @@ class _BabyCareHistorySheetState extends State<_BabyCareHistorySheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '📋 케어 타임로그 히스토리 (${_logs.length})',
-                style: AppTypography.heading2.copyWith(fontSize: 18),
+              Expanded(
+                child: Text(
+                  '📋 케어 타임로그 히스토리 (${_logs.length})',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.heading2.copyWith(fontSize: 18),
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.close_rounded),

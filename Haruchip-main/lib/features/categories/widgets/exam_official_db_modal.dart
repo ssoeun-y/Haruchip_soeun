@@ -176,19 +176,24 @@ class _ExamOfficialDbModalContentState extends State<_ExamOfficialDbModalContent
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
+                    Expanded(
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
                             const Text('📚', style: TextStyle(fontSize: 20)),
                             const SizedBox(width: 8),
-                            Text(
-                              '공식 시험일정 불러오기',
-                              style: AppTypography.heading2.copyWith(
-                                color: const Color(0xFF0F172A),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
+                            Flexible(
+                              child: Text(
+                                '공식 시험일정 불러오기',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.heading2.copyWith(
+                                  color: const Color(0xFF0F172A),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
                               ),
                             ),
                           ],
@@ -202,6 +207,7 @@ class _ExamOfficialDbModalContentState extends State<_ExamOfficialDbModalContent
                           ),
                         ),
                       ],
+                    ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
@@ -511,13 +517,18 @@ class _ExamOfficialDbModalContentState extends State<_ExamOfficialDbModalContent
                                                 ),
                                               ),
                                             ),
-                                            Text(
+                                            const SizedBox(width: 6),
+                                            // 날짜는 자르지 않고, 좁으면 두 줄로
+                                            Flexible(
+                                              child: Text(
                                               dateStr,
+                                              textAlign: TextAlign.right,
                                               style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w600,
                                                 color: stage.stageType.isExamDay ? themeColor : const Color(0xFF64748B),
                                               ),
+                                            ),
                                             ),
                                           ],
                                         ),

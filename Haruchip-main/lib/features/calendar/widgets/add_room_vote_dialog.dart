@@ -205,7 +205,10 @@ class _AddRoomVoteDialogState extends State<_AddRoomVoteDialog> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: SafeArea(
+      // 흰 배경 위에 체크박스 터치 물결이 보이도록
+      child: Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
         top: false,
         child: Column(
           children: [
@@ -451,6 +454,7 @@ class _AddRoomVoteDialogState extends State<_AddRoomVoteDialog> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

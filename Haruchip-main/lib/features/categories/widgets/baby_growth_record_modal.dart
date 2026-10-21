@@ -109,9 +109,13 @@ class _BabyGrowthRecordSheetState extends State<_BabyGrowthRecordSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '📏 신체 계측 성장 기록',
-                style: AppTypography.heading2.copyWith(fontSize: 18),
+              Expanded(
+                child: Text(
+                  '📏 신체 계측 성장 기록',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.heading2.copyWith(fontSize: 18),
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.close_rounded),

@@ -62,8 +62,10 @@ class _MemberColorPickerDialogState extends State<_MemberColorPickerDialog> {
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
+                Expanded(
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -84,6 +86,8 @@ class _MemberColorPickerDialogState extends State<_MemberColorPickerDialog> {
                     ),
                   ],
                 ),
+                ),
+                const SizedBox(width: 8),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
@@ -93,7 +97,9 @@ class _MemberColorPickerDialogState extends State<_MemberColorPickerDialog> {
               ],
             ),
             const SizedBox(height: 16),
-            ConstrainedBox(
+            // 키보드 등으로 세로 자리가 줄면 색상 목록이 먼저 줄어든다
+            Flexible(
+              child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.45,
               ),
@@ -109,6 +115,7 @@ class _MemberColorPickerDialogState extends State<_MemberColorPickerDialog> {
                 ),
               ),
             ),
+            ),
             const SizedBox(height: 18),
             Row(
               children: [
@@ -122,11 +129,15 @@ class _MemberColorPickerDialogState extends State<_MemberColorPickerDialog> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  '선택된 색상: $_selectedHex',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                Expanded(
+                  child: Text(
+                    '선택된 색상: $_selectedHex',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(_selectedHex),
                   style: ElevatedButton.styleFrom(

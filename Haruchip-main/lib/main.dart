@@ -66,6 +66,12 @@ class HaruChipApp extends StatelessWidget {
       title: '하루칩',
       debugShowCheckedModeBanner: false,
       scrollBehavior: const HaruAppScrollBehavior(),
+      // 폰 글씨 크기 설정은 따르되 최대 1.3배까지만 — 그 이상은 레이아웃이 깨진다.
+      // (반응형 점검 테스트도 1.3배 기준: test/responsive/)
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.3,
+        child: child!,
+      ),
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,

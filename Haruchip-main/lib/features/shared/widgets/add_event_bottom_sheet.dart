@@ -549,9 +549,14 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
                   onPressed: () => Navigator.pop(context),
                   child: const Text('취소', style: TextStyle(color: _kLabel, fontSize: 16)),
                 ),
-                Text(
-                  _headerTitle,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: _kLabel),
+                Expanded(
+                  child: Text(
+                    _headerTitle,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: _kLabel),
+                  ),
                 ),
                 TextButton(
                   onPressed: _handleSave,
@@ -941,7 +946,9 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _kLabel),
             ),
             const SizedBox(height: 12),
-            Row(
+            // 좁으면 다음 줄로
+            Wrap(
+              runSpacing: 8,
               children: [
                 for (final opt in [
                   (DdayDisplayMode.dday, 'D-Day'),

@@ -173,12 +173,16 @@ class _AddGoalModalState extends State<_AddGoalModal> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        isEditing ? '목표 / 버킷리스트 수정' : '새 목표 / 버킷리스트 추가',
-                        style: AppTypography.heading2.copyWith(
-                          color: AppColors.protoHeading,
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          isEditing ? '목표 / 버킷리스트 수정' : '새 목표 / 버킷리스트 추가',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.heading2.copyWith(
+                            color: AppColors.protoHeading,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       IconButton(
@@ -351,14 +355,16 @@ class _AddGoalModalState extends State<_AddGoalModal> {
                                     color: _noDeadline ? Colors.grey : const Color(0xFF0F172A),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    _noDeadline || _deadline == null
-                                        ? '기한 없음'
-                                        : '${_deadline!.year}.${_deadline!.month.toString().padLeft(2, '0')}.${_deadline!.day.toString().padLeft(2, '0')}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: _noDeadline ? Colors.grey : const Color(0xFF0F172A),
+                                  Flexible(
+                                    child: Text(
+                                      _noDeadline || _deadline == null
+                                          ? '기한 없음'
+                                          : '${_deadline!.year}.${_deadline!.month.toString().padLeft(2, '0')}.${_deadline!.day.toString().padLeft(2, '0')}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: _noDeadline ? Colors.grey : const Color(0xFF0F172A),
+                                      ),
                                     ),
                                   ),
                                 ],

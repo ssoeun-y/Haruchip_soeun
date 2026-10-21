@@ -102,9 +102,11 @@ class EventSyncOptionsSection extends ConsumerWidget {
                   children: [
                     Icon(Icons.calendar_month_outlined, size: 16, color: Color(0xFF4285F4)),
                     SizedBox(width: 8),
-                    Text(
-                      '구글 캘린더에 등록',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                    Flexible(
+                      child: Text(
+                        '구글 캘린더에 등록',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                      ),
                     ),
                   ],
                 ),
@@ -121,9 +123,11 @@ class EventSyncOptionsSection extends ConsumerWidget {
                   children: [
                     Icon(Icons.event_note_rounded, size: 16, color: Color(0xFF03C75A)),
                     SizedBox(width: 8),
-                    Text(
-                      '네이버 캘린더에 등록',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                    Flexible(
+                      child: Text(
+                        '네이버 캘린더에 등록',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                      ),
                     ),
                   ],
                 ),
@@ -140,9 +144,11 @@ class EventSyncOptionsSection extends ConsumerWidget {
                   children: [
                     Icon(Icons.groups_outlined, size: 16, color: Color(0xFF6366F1)),
                     SizedBox(width: 8),
-                    Text(
-                      '참여 중인 모임에 등록',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                    Flexible(
+                      child: Text(
+                        '참여 중인 모임에 등록',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                      ),
                     ),
                   ],
                 ),

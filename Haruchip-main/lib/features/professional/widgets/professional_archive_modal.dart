@@ -159,19 +159,25 @@ class _ProfessionalArchiveModalState extends State<_ProfessionalArchiveModal> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
-                        children: [
-                          Text('🗄️', style: TextStyle(fontSize: 18)),
-                          SizedBox(width: 8),
-                          Text(
-                            '기록 보관함 (Archive)',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
+                      const Expanded(
+                        child: Row(
+                          children: [
+                            Text('🗄️', style: TextStyle(fontSize: 18)),
+                            SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                '기록 보관함 (Archive)',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),

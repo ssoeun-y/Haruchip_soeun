@@ -166,12 +166,16 @@ class _AddRoomEventDialogState extends State<_AddRoomEventDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '📅 모임 공유 일정 등록',
-                    style: AppTypography.cardLabel.copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.protoHeading,
+                  Expanded(
+                    child: Text(
+                      '📅 모임 공유 일정 등록',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.cardLabel.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.protoHeading,
+                      ),
                     ),
                   ),
                   IconButton(

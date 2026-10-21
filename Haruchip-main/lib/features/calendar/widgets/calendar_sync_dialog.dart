@@ -48,6 +48,8 @@ class _CalendarSyncDialog extends StatelessWidget {
           color: AppColors.protoCardBg,
           borderRadius: BorderRadius.circular(24),
         ),
+        // 키보드가 올라오거나 세로가 짧은 폰에서는 스크롤
+        child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -157,6 +159,7 @@ class _CalendarSyncDialog extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

@@ -54,9 +54,13 @@ Future<bool> showCoupleRelationshipSetupSheet(BuildContext context, WidgetRef re
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        '만난 날 및 재회 설정',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.protoHeading),
+                      const Expanded(
+                        child: Text(
+                          '만난 날 및 재회 설정',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.protoHeading),
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.grey),
@@ -138,9 +142,13 @@ Future<bool> showCoupleRelationshipSetupSheet(BuildContext context, WidgetRef re
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            '이별 / 재회 이력',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          const Expanded(
+                            child: Text(
+                              '이별 / 재회 이력',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
                           ),
                           TextButton.icon(
                             onPressed: () {
