@@ -30,6 +30,22 @@ service cloud.firestore {
       return inv.data.roomId == roomId && inv.data.expiresAt > request.time;
     }
 
+    // ── 내 데이터 (users/{uid}) — 본인만 읽고 쓴다 ───────────────
+    // appData 문서 하나는 LocalStoreKeys 하나(카테고리/일정/휴지통/커플)의 JSON 문자열.
+    match /users/{uid} {
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'email', 'provider', 'createdAt', 'lastLoginAt', 'avatarEmoji', 'selectedCategories']);
+
+      match /appData/{key} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['json', 'updatedAt'])
+          && request.resource.data.json is string
+          && request.resource.data.json.size() < 921600;
+      }
+    }
+
     // ── 초대코드 (다회용, 7일) ─────────────────────────────
     match /inviteCodes/{code} {
       allow get: if signedIn();

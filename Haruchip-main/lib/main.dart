@@ -11,6 +11,9 @@ import 'features/calendar/data/room_remote.dart';
 import 'features/onboarding/screens/splash_screen.dart';
 import 'firebase_options.dart';
 import 'services/storage/local_store.dart';
+import 'services/storage/user_data_remote.dart';
+import 'services/storage/user_scoped_local_store.dart';
+import 'services/storage/user_session.dart';
 
 /// 전역 스크롤 및 마우스/터치 드래그 제스처 인에이블러
 class HaruAppScrollBehavior extends MaterialScrollBehavior {
@@ -42,18 +45,42 @@ void main() async {
   // 카테고리/일정/휴지통 로컬 저장소 — Notifier.build()가 동기로 읽을 수
   // 있도록 runApp 전에 미리 로드한다.
   final prefs = await SharedPreferences.getInstance();
-  runApp(
-    ProviderScope(
-      overrides: [
-        localStoreProvider.overrideWithValue(SharedPrefsLocalStore(prefs)),
-        // 모임방 Firestore 실시간 동기화 (로그인 시)
-        roomRemoteProvider.overrideWithValue(
-          FirestoreRoomRemote(FirebaseFirestore.instance, authChanges: firebaseRoomUserChanges()),
+  final container = ProviderContainer(
+    overrides: [
+      baseLocalStoreProvider.overrideWithValue(SharedPrefsLocalStore(prefs)),
+      userDataRemoteProvider.overrideWithValue(
+        FirestoreUserDataRemote(FirebaseFirestore.instance),
+      ),
+      // 카테고리/일정/휴지통은 로그인한 계정별로 분리 저장하고 Firestore
+      // `users/{uid}/appData`에 동기화한다. 계정이 바뀌면 이 Provider가 새로
+      // 만들어져 저장된 데이터로 다시 그려진다.
+      localStoreProvider.overrideWith(
+        (ref) => UserScopedLocalStore(
+          base: ref.watch(baseLocalStoreProvider),
+          uid: ref.watch(userSessionProvider.select((s) => s.uid)),
+          remote: ref.watch(userDataRemoteProvider),
         ),
-      ],
-      child: const HaruChipApp(),
-    ),
+      ),
+      // 모임방 Firestore 실시간 동기화 (로그인 시)
+      roomRemoteProvider.overrideWithValue(
+        FirestoreRoomRemote(FirebaseFirestore.instance, authChanges: firebaseRoomUserChanges()),
+      ),
+    ],
   );
+  // 앱 시작 시 남아 있는 로그인 세션도 같은 경로로 서버 데이터를 불러온다.
+  container.read(userSessionProvider.notifier).start(
+        FirebaseAuth.instance.authStateChanges().map(
+              (u) => u == null
+                  ? null
+                  : AuthIdentity(
+                      uid: u.uid,
+                      name: u.displayName,
+                      email: u.email,
+                      provider: u.providerData.isEmpty ? null : u.providerData.first.providerId,
+                    ),
+            ),
+      );
+  runApp(UncontrolledProviderScope(container: container, child: const HaruChipApp()));
 }
 
 class HaruChipApp extends StatelessWidget {

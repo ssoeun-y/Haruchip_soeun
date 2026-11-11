@@ -67,6 +67,9 @@ abstract final class LocalStoreKeys {
   static const plans = 'haruchip.plans.v1';
   static const trash = 'haruchip.trash.v1';
   static const couple = 'haruchip.couple.v1';
+
+  /// 계정에 붙여 보관(동기화)하는 모든 키.
+  static const all = [categories, plans, trash, couple];
 }
 
 /// [key]에 저장된 JSON 배열을 [fromJson]으로 복원한다. 저장된 값이 없으면

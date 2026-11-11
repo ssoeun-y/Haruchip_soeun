@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../home/screens/main_shell_screen.dart';
+import '../../../services/storage/user_session.dart';
 import 'app_permission_screen.dart';
 
 /// 앱 시작 스플래시 화면 (자동 전환)
@@ -96,11 +98,18 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  void _proceedToNext() {
+  Future<void> _proceedToNext() async {
     if (widget.onNext != null) {
       widget.onNext!();
       return;
     }
+    // 로그인 세션이 있으면 서버에 저장된 내 데이터를 다 불러온 뒤에 홈을 그린다.
+    try {
+      await ProviderScope.containerOf(context, listen: false)
+          .read(userSessionProvider.notifier)
+          .waitUntilReady();
+    } catch (_) {}
+    if (!mounted) return;
     final loggedIn = widget.isLoggedIn ??
         (Firebase.apps.isNotEmpty && FirebaseAuth.instance.currentUser != null);
 

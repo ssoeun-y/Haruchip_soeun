@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'apple_auth_service.dart';
+import '../storage/user_data_remote.dart';
 import 'google_auth_service.dart';
 
 /// 통합 인증 및 세션/계정 탈퇴 관리 서비스
@@ -45,6 +47,8 @@ class AuthService {
   Future<void> deleteAccount() async {
     final user = currentUser;
     if (user != null) {
+      // 탈퇴 = 서버에 저장된 내 데이터도 함께 삭제 (실패하면 계정 삭제 전에 중단 — 데이터만 남지 않게).
+      await FirestoreUserDataRemote(FirebaseFirestore.instance).deleteAll(user.uid);
       await user.delete();
     }
     await signOut();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -6,6 +7,9 @@ import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
 import '../../../services/auth/apple_auth_service.dart';
 import '../../../services/auth/google_auth_service.dart';
+import '../../../services/storage/user_session.dart';
+import '../../categories/providers/category_provider.dart';
+import '../../home/screens/main_shell_screen.dart';
 import 'category_selection_screen.dart';
 
 /// 온보딩 플로우의 "로그인" 단계.
@@ -61,6 +65,27 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// 로그인 성공 직후: 서버에 저장된 내 데이터를 불러온 뒤, 이미 쓰던 계정(카테고리가
+  /// 있음)이면 온보딩을 건너뛰고 바로 홈으로, 새 계정이면 카테고리 선택으로 보낸다.
+  Future<void> _afterSignIn() async {
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {}
+    if (container != null) {
+      await container.read(userSessionProvider.notifier).waitUntilReady();
+      if (!mounted) return;
+      if (container.read(categoryListProvider).isNotEmpty) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainShellScreen()),
+          (route) => false,
+        );
+        return;
+      }
+    }
+    _goToNextStep();
+  }
+
   /// 카카오 로그인은 아직 실제 OAuth 연동 전 UI 스텁 — 다음 단계로만
   /// 넘어간다. (실제 로직은 보안 담당이 `lib/services/auth/*`에서 별도 구현)
   void _handleKakaoStubLogin() {
@@ -74,7 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await GoogleAuthService.instance.signIn();
       if (!mounted) return;
-      _goToNextStep();
+      await _afterSignIn();
+      if (!mounted) return;
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
         // 사용자가 계정 선택 창에서 취소 — 조용히 무시.
@@ -100,7 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await AppleAuthService.instance.signIn();
       if (!mounted) return;
-      _goToNextStep();
+      await _afterSignIn();
+      if (!mounted) return;
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) {
         // 사용자가 애플 로그인 시트에서 취소 — 조용히 무시.
