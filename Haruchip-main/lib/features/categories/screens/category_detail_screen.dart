@@ -10,7 +10,10 @@ import '../../../design_system/typography.dart';
 import '../../plan/models/plan_item.dart';
 import '../../plan/providers/plan_provider.dart';
 import '../../shared/widgets/add_event_bottom_sheet.dart';
+import '../../trash/logic/trash_service.dart';
+import '../../trash/models/trash_item.dart';
 import '../data/baby_health_database.dart';
+import '../logic/category_entry_mirrors.dart';
 import '../models/baby_profile.dart';
 import '../models/birthday_profile.dart';
 import '../models/category.dart';
@@ -698,7 +701,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<BirthdayProfile> _getBirthdayFriends() {
     final meta = _category.metadata;
     final friendsRaw = meta?['friends'] as List<dynamic>?;
-    if (friendsRaw != null && friendsRaw.isNotEmpty) {
+    if (friendsRaw != null) {
       return friendsRaw
           .map((e) => BirthdayProfile.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
@@ -706,7 +709,43 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
     return kDefaultMockBirthdayFriends;
   }
 
+  /// [before]에서 빠진(=사용자가 삭제한) 항목을 바로 지우지 않고 휴지통으로
+  /// 보낸다 — 30일 안에 원래 카테고리로 복구할 수 있다. 수정은 id가
+  /// 그대로라 해당하지 않는다.
+  void _trashRemoved<T>({
+    required List<T> before,
+    required List<T> after,
+    required String Function(T) idOf,
+    required TrashEntityType type,
+    required String metaKey,
+    required Map<String, dynamic> Function(T) toJson,
+    required String Function(T) titleOf,
+    Set<String> Function(T)? mirrorPlanIdsOf,
+  }) {
+    final trash = ref.read(trashServiceProvider);
+    for (final e in removedById(before, after, idOf)) {
+      trash.trashCategoryEntry(
+        type: type,
+        category: _category,
+        metaKey: metaKey,
+        entry: toJson(e),
+        title: titleOf(e),
+        mirrorPlanIds: mirrorPlanIdsOf?.call(e) ?? const {},
+      );
+    }
+  }
+
   void _saveBirthdayFriends(List<BirthdayProfile> friends) {
+    _trashRemoved(
+      before: _getBirthdayFriends(),
+      after: friends,
+      idOf: (f) => f.id,
+      type: TrashEntityType.birthday,
+      metaKey: 'friends',
+      toJson: (f) => f.toJson(),
+      titleOf: (f) => '${f.name} 생일',
+      mirrorPlanIdsOf: (f) => {f.id},
+    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['friends'] = friends.map((f) => f.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -732,17 +771,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           ),
         );
       } else {
-        planNotifier.addItem(
-          PlanItem(
-            id: friend.id,
-            title: '${friend.name} 생일',
-            date: friend.nextBirthdayDate(),
-            categoryKey: 'birthday',
-            categoryInstanceId: _category.id,
-            repeat: true,
-            photoUrl: friend.photoUrl,
-          ),
-        );
+        planNotifier.addItem(birthdayMirror(friend, _category.id));
       }
     }
   }
@@ -783,13 +812,23 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<GoalItem> _getGoals() {
     final meta = _category.metadata;
     final raw = meta?['goals'] as List<dynamic>?;
-    if (raw != null && raw.isNotEmpty) {
+    if (raw != null) {
       return raw.map((e) => GoalItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     }
     return kDefaultMockGoals;
   }
 
   void _saveGoals(List<GoalItem> goals) {
+    _trashRemoved(
+      before: _getGoals(),
+      after: goals,
+      idOf: (g) => g.id,
+      type: TrashEntityType.goal,
+      metaKey: 'goals',
+      toJson: (g) => g.toJson(),
+      titleOf: (g) => g.title,
+      mirrorPlanIdsOf: (g) => {g.id},
+    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['goals'] = goals.map((g) => g.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -803,7 +842,8 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
     final planNotifier = ref.read(planListProvider.notifier);
     final allPlanItems = ref.read(planListProvider);
     for (final g in goals) {
-      if (g.showInCalendar && g.deadline != null) {
+      final mirror = goalMirror(g, _category.id);
+      if (mirror != null) {
         final existing = allPlanItems.where((p) => p.id == g.id).toList();
         if (existing.isNotEmpty) {
           planNotifier.updateItem(
@@ -813,16 +853,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
             ),
           );
         } else {
-          planNotifier.addItem(
-            PlanItem(
-              id: g.id,
-              title: g.title,
-              date: g.deadline!,
-              categoryKey: 'goal',
-              categoryInstanceId: _category.id,
-              repeat: false,
-            ),
-          );
+          planNotifier.addItem(mirror);
         }
       } else {
         ref.read(planListProvider.notifier).removeItem(g.id);
@@ -848,13 +879,23 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<AppointmentItem> _getAppointments() {
     final meta = _category.metadata;
     final raw = meta?['appointments'] as List<dynamic>?;
-    if (raw != null && raw.isNotEmpty) {
+    if (raw != null) {
       return raw.map((e) => AppointmentItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     }
     return kDefaultMockAppointments;
   }
 
   void _saveAppointments(List<AppointmentItem> appointments) {
+    _trashRemoved(
+      before: _getAppointments(),
+      after: appointments,
+      idOf: (a) => a.id,
+      type: TrashEntityType.appointment,
+      metaKey: 'appointments',
+      toJson: (a) => a.toJson(),
+      titleOf: (a) => a.title,
+      mirrorPlanIdsOf: (a) => {a.id},
+    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['appointments'] = appointments.map((a) => a.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -877,16 +918,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           ),
         );
       } else {
-        planNotifier.addItem(
-          PlanItem(
-            id: a.id,
-            title: a.title,
-            date: a.date,
-            categoryKey: 'plan',
-            categoryInstanceId: _category.id,
-            repeat: false,
-          ),
-        );
+        planNotifier.addItem(appointmentMirror(a, _category.id));
       }
     }
   }
@@ -909,13 +941,22 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<RoutineItem> _getRoutines() {
     final meta = _category.metadata;
     final raw = meta?['routines'] as List<dynamic>?;
-    if (raw != null && raw.isNotEmpty) {
+    if (raw != null) {
       return raw.map((e) => RoutineItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     }
     return kDefaultMockRoutines;
   }
 
   void _saveRoutines(List<RoutineItem> routines) {
+    _trashRemoved(
+      before: _getRoutines(),
+      after: routines,
+      idOf: (r) => r.id,
+      type: TrashEntityType.routine,
+      metaKey: 'routines',
+      toJson: (r) => r.toJson(),
+      titleOf: (r) => r.title,
+    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['routines'] = routines.map((r) => r.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -1131,7 +1172,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<ExamProfile> _getExams() {
     final meta = _category.metadata;
     final raw = meta?['exams'] as List<dynamic>?;
-    if (raw != null && raw.isNotEmpty) {
+    if (raw != null) {
       return raw.map((e) => ExamProfile.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     }
     // Default preset if not initialized
@@ -1190,6 +1231,19 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   }
 
   void _saveExams(List<ExamProfile> exams) {
+    _trashRemoved(
+      before: _getExams(),
+      after: exams,
+      idOf: (e) => e.id,
+      type: TrashEntityType.exam,
+      metaKey: 'exams',
+      toJson: (e) => e.toJson(),
+      titleOf: (e) => e.title,
+      mirrorPlanIdsOf: (e) => {
+        for (final s in e.subjects) 'exam-plan-${s.id}',
+        for (final s in e.stages) 'exam-plan-${s.id}',
+      },
+    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['exams'] = exams.map((e) => e.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -1214,36 +1268,8 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
 
     // Add updated plans
     for (final exam in exams) {
-      if (!exam.showInMainCalendar) continue;
-
-      if (exam.type == ExamType.midterm || exam.type == ExamType.finalExam) {
-        for (final sub in exam.subjects) {
-          planNotifier.addItem(
-            PlanItem(
-              id: 'exam-plan-${sub.id}',
-              title: '[${exam.title}] ${sub.period}교시 ${sub.subjectName}',
-              date: sub.examDate,
-              categoryKey: 'exam',
-              categoryInstanceId: _category.id,
-              repeat: false,
-            ),
-          );
-        }
-      } else {
-        for (final stage in exam.stages) {
-          if (!stage.isEnded() || stage.stageType.isExamDay) {
-            planNotifier.addItem(
-              PlanItem(
-                id: 'exam-plan-${stage.id}',
-                title: '[${exam.title}] ${stage.name}',
-                date: stage.startDate,
-                categoryKey: 'exam',
-                categoryInstanceId: _category.id,
-                repeat: false,
-              ),
-            );
-          }
-        }
+      for (final mirror in examMirrors(exam, _category.id)) {
+        planNotifier.addItem(mirror);
       }
     }
   }
@@ -1601,7 +1627,14 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
               ],
             )
           else ...[
-            if (_category.categoryKey == 'baby')
+            // 좁은 폰(<400)에서는 앱바 버튼이 넘치므로 섹션 관리는 아이콘만 보여준다.
+            if (_category.categoryKey == 'baby' && MediaQuery.sizeOf(context).width < 400)
+              IconButton(
+                onPressed: _openBabySectionManagementModal,
+                tooltip: '섹션 관리',
+                icon: const Icon(Icons.tune_rounded, size: 20, color: Color(0xFF2563EB)),
+              )
+            else if (_category.categoryKey == 'baby')
               TextButton.icon(
                 onPressed: _openBabySectionManagementModal,
                 icon: const Icon(Icons.tune_rounded, size: 16, color: Color(0xFF2563EB)),
@@ -2263,20 +2296,27 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.event_note_rounded, size: 18, color: AppColors.protoHeading),
-                const SizedBox(width: 6),
-                Text(
-                  '세부 D-Day 리스트',
-                  style: AppTypography.cardLabel.copyWith(
-                    color: AppColors.protoHeading,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(Icons.event_note_rounded, size: 18, color: AppColors.protoHeading),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '세부 D-Day 리스트',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.cardLabel.copyWith(
+                        color: AppColors.protoHeading,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             Text(
               '총 ${countDownItems.length}개',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -2722,11 +2762,13 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: friends.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          // 폭 비례(childAspectRatio)면 좁은 폰에서 카드가 낮아져 내용이 넘친다 —
+          // 사진·여백(140)은 고정, 글자 부분(76)은 폰의 글씨 크기 설정만큼 키운다.
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.88,
+            mainAxisExtent: 140 + MediaQuery.textScalerOf(context).scale(76),
           ),
           itemBuilder: (context, index) {
             final friend = friends[index];
@@ -2785,8 +2827,11 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            // 좁은 폭(375 등)에서는 두 버튼이 한 줄에 안 들어가 넘쳤다 — 줄바꿈 허용.
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 8,
               children: [
                 OutlinedButton.icon(
                   onPressed: _openExamOfficialDbModal,
@@ -2799,7 +2844,6 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
-                const SizedBox(width: 10),
                 ElevatedButton.icon(
                   onPressed: () => _openAddExamModal(),
                   icon: const Icon(Icons.add, size: 18),
@@ -2823,46 +2867,60 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
       children: [
         // 상단 요약 & 빠른 액션 바
         Container(
+          // Wrap은 내용 폭만큼만 차지하므로, 버튼이 오른쪽 끝에 붙도록 가로를 꽉 채운다.
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
+          // 한 줄 유지 — 좁으면 제목과 개수 배지가 말줄임으로 줄어들고, 오른쪽 버튼은 그대로.
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.school_rounded, size: 18, color: Color(0xFF2563EB)),
-                  const SizedBox(width: 8),
-                  Text(
-                    '시험 파이프라인 관리',
-                    style: AppTypography.cardLabel.copyWith(
-                      color: AppColors.protoHeading,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '총 ${exams.length}개',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2563EB),
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.school_rounded, size: 18, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '시험 파이프라인 관리',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.cardLabel.copyWith(
+                          color: AppColors.protoHeading,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '총 ${exams.length}개',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2563EB),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   InkWell(
                     onTap: _openExamOfficialDbModal,

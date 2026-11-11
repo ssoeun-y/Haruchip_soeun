@@ -687,7 +687,8 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _kLabel),
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              runSpacing: 8,
               children: [
                 for (final opt in [
                   (DdayDisplayMode.dday, 'D-Day'),

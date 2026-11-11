@@ -90,7 +90,10 @@ class DashboardViewModeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
                         Text(
                           _displayTitle,
@@ -101,7 +104,6 @@ class DashboardViewModeCard extends StatelessWidget {
                             letterSpacing: -0.3,
                           ),
                         ),
-                        const SizedBox(width: 6),
                         // 기존 테스트 및 이전 라벨 하위 호환 매칭용 뱃지
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

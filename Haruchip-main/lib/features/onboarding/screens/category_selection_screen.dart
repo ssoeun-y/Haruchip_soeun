@@ -77,13 +77,21 @@ class CategorySelectionScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    GridView.count(
+                    // 폭 비례(1.22)로만 높이를 잡으면 좁은 폰·큰 글씨에서 카드 내용이 넘친다 —
+                    // 넓은 폰에서는 기존 비율 그대로, 좁으면 내용에 필요한 최소 높이를 보장한다.
+                    LayoutBuilder(builder: (context, constraints) {
+                      final cellWidth = (constraints.maxWidth - 12) / 2;
+                      final minHeight =
+                          92 + MediaQuery.textScalerOf(context).scale(40);
+                      final cellHeight =
+                          (cellWidth / 1.22) > minHeight ? cellWidth / 1.22 : minHeight;
+                      return GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 1.22,
+                      childAspectRatio: cellWidth / cellHeight,
                       children: [
                         for (final category in kOnboardingCategories)
                           CategorySelectionCard(
@@ -92,7 +100,8 @@ class CategorySelectionScreen extends ConsumerWidget {
                             onTap: () => handleToggle(category.key),
                           ),
                       ],
-                    ),
+                    );
+                    }),
                     const SizedBox(height: 80),
                   ],
                 ),

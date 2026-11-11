@@ -135,14 +135,16 @@ class DashboardViewModeScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                selectedKey == 'box'
-                    ? '실시간 미리보기 : 칩 모아보기 뷰'
-                    : '실시간 미리보기 : 타임라인 뷰',
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF333D4B),
+              Expanded(
+                child: Text(
+                  selectedKey == 'box'
+                      ? '실시간 미리보기 : 칩 모아보기 뷰'
+                      : '실시간 미리보기 : 타임라인 뷰',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF333D4B),
+                  ),
                 ),
               ),
             ],

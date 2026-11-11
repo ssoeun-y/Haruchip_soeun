@@ -130,12 +130,16 @@ class SoloTopCardWidget extends StatelessWidget {
                       children: [
                         const Text('🌱', style: TextStyle(fontSize: 14)),
                         const SizedBox(width: 6),
-                        Text(
+                        Flexible(
+                          child: Text(
                           '나를 위한 시간',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: isSelfCare ? FontWeight.bold : FontWeight.w500,
                             color: isSelfCare ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                          ),
                           ),
                         ),
                       ],
@@ -241,19 +245,25 @@ class SoloTopCardWidget extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Row(
-              children: [
-                Text('✨', style: TextStyle(fontSize: 14)),
-                SizedBox(width: 6),
-                Text(
-                  '나만의 갓생 & 플랜 빠른 태그',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+            const Expanded(
+              child: Row(
+                children: [
+                  Text('✨', style: TextStyle(fontSize: 14)),
+                  SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '나만의 갓생 & 플랜 빠른 태그',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             TextButton.icon(
               onPressed: () => _showAddTagDialog(context),

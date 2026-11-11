@@ -3,10 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
-import '../../calendar/models/schedule_room.dart';
-import '../../calendar/providers/schedule_room_provider.dart';
-import '../../plan/models/plan_item.dart';
-import '../../plan/providers/plan_provider.dart';
+import '../../trash/logic/trash_service.dart';
 import '../../trash/models/trash_item.dart';
 import '../../trash/providers/trash_provider.dart';
 
@@ -157,15 +154,18 @@ class _TrashBinScreenState extends ConsumerState<TrashBinScreen> {
 
   /// 단일 항목 복원
   void _restoreItem(TrashItem item) {
-    _restoreSingleEntity(item);
-    ref.read(trashBinProvider.notifier).restore(item.id);
+    // 원래 위치로 되돌리기에 성공했을 때만 휴지통에서 빠진다. 실패하면
+    // (원래 카테고리/방이 없어졌거나 복구 미지원 유형) 휴지통에 그대로 둔다.
+    final ok = ref.read(trashServiceProvider).restore(item);
     setState(() {
       _selectedIds.remove(item.id);
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('🎉 [${item.originalTitle}] 항목이 원래 위치로 복구되었습니다!'),
+        content: Text(ok
+            ? '🎉 [${item.originalTitle}] 항목이 원래 위치로 복구되었습니다!'
+            : '⚠️ [${item.originalTitle}] 원래 위치(카테고리/모임방)를 찾을 수 없어 복구하지 못했어요. 휴지통에 그대로 보관됩니다.'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -178,12 +178,13 @@ class _TrashBinScreenState extends ConsumerState<TrashBinScreen> {
     final allTrash = ref.read(trashBinProvider);
     final toRestore = allTrash.where((item) => _selectedIds.contains(item.id)).toList();
 
+    // 되돌린 항목만 휴지통에서 빠진다 — 실패한 항목은 그대로 남아 데이터가 사라지지 않는다.
+    final service = ref.read(trashServiceProvider);
+    var count = 0;
     for (final item in toRestore) {
-      _restoreSingleEntity(item);
+      if (service.restore(item)) count++;
     }
-
-    ref.read(trashBinProvider.notifier).restoreMultiple(_selectedIds);
-    final count = toRestore.length;
+    final failed = toRestore.length - count;
 
     setState(() {
       _selectedIds.clear();
@@ -192,41 +193,12 @@ class _TrashBinScreenState extends ConsumerState<TrashBinScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('🎉 선택한 $count개 항목이 원래 위치로 복구되었습니다!'),
+        content: Text(failed == 0
+            ? '🎉 선택한 $count개 항목이 원래 위치로 복구되었습니다!'
+            : '$count개 항목을 복구했어요. $failed개는 원래 위치를 찾을 수 없어 휴지통에 보관됩니다.'),
         behavior: SnackBarBehavior.floating,
       ),
     );
-  }
-
-  /// 엔티티별 원본 위치 복원 처리
-  void _restoreSingleEntity(TrashItem item) {
-    final data = item.originalData;
-    try {
-      if (item.entityType == TrashEntityType.plan && data.isNotEmpty) {
-        final restoredPlan = PlanItem(
-          id: data['id'] as String? ?? 'plan-${DateTime.now().microsecondsSinceEpoch}',
-          title: data['title'] as String? ?? item.originalTitle,
-          date: data['date'] != null ? DateTime.parse(data['date'] as String) : DateTime.now(),
-          categoryKey: data['categoryKey'] as String? ?? item.categoryKey ?? 'plan',
-          categoryInstanceId: data['categoryInstanceId'] as String?,
-          isAllDay: data['isAllDay'] as bool? ?? false,
-          photoUrl: data['photoUrl'] as String?,
-        );
-        ref.read(planListProvider.notifier).addItem(restoredPlan);
-      } else if (item.entityType == TrashEntityType.settlement && item.roomId != null && data.isNotEmpty) {
-        final restoredSettlement = SettlementRecord.fromJson(data);
-        ref.read(scheduleRoomsProvider.notifier).restoreSettlementRecord(item.roomId!, restoredSettlement);
-      } else if (item.entityType == TrashEntityType.notice && item.roomId != null && data.isNotEmpty) {
-        final restoredNotice = RoomNotice.fromJson(data);
-        ref.read(scheduleRoomsProvider.notifier).addRoomNotice(item.roomId!, restoredNotice);
-      } else if (item.entityType == TrashEntityType.vote && item.roomId != null && data.isNotEmpty) {
-        final restoredVote = RoomVote.fromJson(data);
-        ref.read(scheduleRoomsProvider.notifier).createRoomVote(item.roomId!, restoredVote);
-      } else if (item.entityType == TrashEntityType.event && item.roomId != null && data.isNotEmpty) {
-        final restoredEvent = RoomSharedEvent.fromJson(data);
-        ref.read(scheduleRoomsProvider.notifier).addRoomEvent(item.roomId!, restoredEvent);
-      }
-    } catch (_) {}
   }
 
   String _formatDate(DateTime d) =>
@@ -511,7 +483,8 @@ class _TrashBinScreenState extends ConsumerState<TrashBinScreen> {
                                   ),
                                   const SizedBox(width: 4),
                                 ],
-                                Container(
+                                Flexible(
+                                  child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
                                     color: item.entityType.color.withValues(alpha: 0.12),
@@ -522,17 +495,23 @@ class _TrashBinScreenState extends ConsumerState<TrashBinScreen> {
                                     children: [
                                       Text(item.entityType.emoji, style: const TextStyle(fontSize: 11)),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        item.entityType.labelKo,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: item.entityType.color,
+                                      Flexible(
+                                        child: Text(
+                                          item.entityType.labelKo,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: item.entityType.color,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
+                                ),
+                                const SizedBox(width: 8),
                                 const Spacer(),
                                 // [남은 보관 일수 (ex. 28일 남음)] 라벨
                                 Container(

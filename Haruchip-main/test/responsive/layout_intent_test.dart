@@ -55,7 +55,7 @@ void main() {
   testWidgets('휴지통 카드: 남은 기간 배지는 오른쪽 끝', (tester) async {
     await _pump(tester, (_) => const TrashBinScreen());
 
-    final badge = tester.getRect(find.textContaining('남은 복구 기간').first);
+    final badge = tester.getRect(find.textContaining('일 남음').first);
     expect(badge.right, greaterThan(430 - 80));
   });
 }

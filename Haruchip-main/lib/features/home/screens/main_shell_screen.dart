@@ -204,13 +204,15 @@ class _BottomNavBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // 탭 칸을 균등 분할 — 큰 글씨·좁은 폰에서도 탭 이름이 넘치지 않게.
           children: [
             for (var i = 0; i < tabs.length; i++)
-              _NavBarButton(
-                tab: tabs[i],
-                selected: i == selectedIndex,
-                onTap: () => onSelect(i),
+              Expanded(
+                child: _NavBarButton(
+                  tab: tabs[i],
+                  selected: i == selectedIndex,
+                  onTap: () => onSelect(i),
+                ),
               ),
           ],
         ),
@@ -247,6 +249,8 @@ class _NavBarButton extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               tab.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AppTypography.caption.copyWith(
                 fontSize: 11,
                 color: color,

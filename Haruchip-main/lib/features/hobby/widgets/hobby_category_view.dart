@@ -272,13 +272,17 @@ class HobbyCategoryView extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            hobby.daysSinceStartText(now),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.2,
+                          Flexible(
+                            child: Text(
+                              hobby.daysSinceStartText(now),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                              ),
                             ),
                           ),
                         ],
@@ -367,15 +371,20 @@ class HobbyCategoryView extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
+            Expanded(
+              child: Row(
               children: [
-                const Text(
-                  '다가오는 취미 일정',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1F2937),
-                    letterSpacing: -0.3,
+                const Flexible(
+                  child: Text(
+                    '다가오는 취미 일정',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1F2937),
+                      letterSpacing: -0.3,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -395,6 +404,7 @@ class HobbyCategoryView extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
             ),
             TextButton.icon(
               onPressed: () => AddHobbyScheduleModal.show(context, hobbyId: hobby.id),
@@ -519,12 +529,16 @@ class HobbyCategoryView extends ConsumerWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Text(
-                        item.formattedDateTime,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: isDone ? Colors.grey.shade400 : const Color(0xFF6B7280),
+                      Flexible(
+                        child: Text(
+                          item.formattedDateTime,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: isDone ? Colors.grey.shade400 : const Color(0xFF6B7280),
+                          ),
                         ),
                       ),
                       if (item.location != null && item.location!.isNotEmpty) ...[

@@ -38,20 +38,27 @@ class _WeddingCategoryViewState extends ConsumerState<WeddingCategoryView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                const Text('📋', style: TextStyle(fontSize: 18)),
-                const SizedBox(width: 8),
-                Text(
-                  '준비 항목 체크리스트 (${items.length})',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.protoHeading,
+            Expanded(
+              child: Row(
+                children: [
+                  const Text('📋', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '준비 항목 체크리스트 (${items.length})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.protoHeading,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             ElevatedButton.icon(
               onPressed: () => WeddingTemplateManagerModal.show(context),
               icon: const Icon(Icons.add_rounded, size: 16),

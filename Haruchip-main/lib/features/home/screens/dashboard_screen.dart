@@ -315,8 +315,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 16),
 
               // 3. 뷰 모드 토글 & 순서 편집 버튼 툴바
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // 좁은 폰에서는 [순서 편집] 버튼이 다음 줄로. (Wrap은 내용 폭만큼만 차지하므로
+              // 넓을 때 버튼이 오른쪽 끝에 붙도록 가로를 채운다)
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 8,
                 children: [
                   DashboardViewModeToggle(
                     selectedKey: viewMode,
@@ -352,6 +358,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
                 ],
+              ),
               ),
               const SizedBox(height: 16),
 

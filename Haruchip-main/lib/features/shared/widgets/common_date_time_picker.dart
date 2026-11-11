@@ -369,26 +369,35 @@ class _CommonDateTimePickerState extends State<CommonDateTimePicker> {
                   color: Color(0xFF374151),
                 ),
               ),
-              const Spacer(),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 시작 날짜 버튼
-                  _buildPillButton(
-                    text: _formatDatePill(_startDate),
-                    isActive: isStartDateActive,
-                    onTap: () => _onToggleTarget(_PickerTarget.startDate),
-                  ),
-                  // 시작 시간 버튼 (하루 종일 꺼져 있을 때만)
-                  if (!_isAllDay) ...[
-                    const SizedBox(width: 6),
-                    _buildPillButton(
-                      text: _formatTimePill(_startDate),
-                      isActive: isStartTimeActive,
-                      onTap: () => _onToggleTarget(_PickerTarget.startTime),
+              const SizedBox(width: 8),
+              // 좁은 폰에서는 날짜/시간 버튼이 폭에 맞게 살짝 줄어든다.
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 시작 날짜 버튼
+                        _buildPillButton(
+                          text: _formatDatePill(_startDate),
+                          isActive: isStartDateActive,
+                          onTap: () => _onToggleTarget(_PickerTarget.startDate),
+                        ),
+                        // 시작 시간 버튼 (하루 종일 꺼져 있을 때만)
+                        if (!_isAllDay) ...[
+                          const SizedBox(width: 6),
+                          _buildPillButton(
+                            text: _formatTimePill(_startDate),
+                            isActive: isStartTimeActive,
+                            onTap: () => _onToggleTarget(_PickerTarget.startTime),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -442,26 +451,34 @@ class _CommonDateTimePickerState extends State<CommonDateTimePicker> {
                     color: Color(0xFF374151),
                   ),
                 ),
-                const Spacer(),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 종료 날짜 버튼
-                    _buildPillButton(
-                      text: _formatDatePill(_endDate!),
-                      isActive: isEndDateActive,
-                      onTap: () => _onToggleTarget(_PickerTarget.endDate),
-                    ),
-                    // 종료 시간 버튼
-                    if (!_isAllDay) ...[
-                      const SizedBox(width: 6),
-                      _buildPillButton(
-                        text: _formatTimePill(_endDate!),
-                        isActive: isEndTimeActive,
-                        onTap: () => _onToggleTarget(_PickerTarget.endTime),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 종료 날짜 버튼
+                          _buildPillButton(
+                            text: _formatDatePill(_endDate!),
+                            isActive: isEndDateActive,
+                            onTap: () => _onToggleTarget(_PickerTarget.endDate),
+                          ),
+                          // 종료 시간 버튼
+                          if (!_isAllDay) ...[
+                            const SizedBox(width: 6),
+                            _buildPillButton(
+                              text: _formatTimePill(_endDate!),
+                              isActive: isEndTimeActive,
+                              onTap: () => _onToggleTarget(_PickerTarget.endTime),
+                            ),
+                          ],
+                        ],
                       ),
-                    ],
-                  ],
+                    ),
+                  ),
                 ),
               ],
             ),

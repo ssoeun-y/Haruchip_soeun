@@ -48,17 +48,22 @@ class BabyGrowthRecordsWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+              Expanded(
+                child: Row(
                 children: [
                   const Text('📏', style: TextStyle(fontSize: 18)),
                   const SizedBox(width: 8),
-                  const Text(
+                  const Flexible(
+                    child: Text(
                     '신체 성장 기록',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       color: AppColors.protoHeading,
                     ),
+                  ),
                   ),
                   const SizedBox(width: 6),
                   Container(
@@ -78,6 +83,8 @@ class BabyGrowthRecordsWidget extends StatelessWidget {
                   ),
                 ],
               ),
+              ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: onOpenAddGrowthRecord,
                 icon: const Icon(Icons.add_rounded, size: 14),

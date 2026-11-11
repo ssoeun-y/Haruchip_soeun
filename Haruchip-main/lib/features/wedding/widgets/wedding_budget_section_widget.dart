@@ -26,20 +26,27 @@ class WeddingBudgetSectionWidget extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Row(
-              children: [
-                Text('💰', style: TextStyle(fontSize: 18)),
-                SizedBox(width: 8),
-                Text(
-                  '결혼 예산 & 지출 정리표',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.protoHeading,
+            const Expanded(
+              child: Row(
+                children: [
+                  Text('💰', style: TextStyle(fontSize: 18)),
+                  SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '결혼 예산 & 지출 정리표',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.protoHeading,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             OutlinedButton.icon(
               onPressed: () => WeddingBudgetEditModal.show(context),
               icon: const Icon(Icons.add, size: 16),
@@ -77,46 +84,63 @@ class WeddingBudgetSectionWidget extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '총 예상 예산',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _formatWon(summary.totalEstimated),
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF334155),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '총 예상 예산',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 3),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _formatWon(summary.totalEstimated),
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   Container(
                     width: 1,
                     height: 32,
+                    margin: const EdgeInsets.symmetric(horizontal: 10),
                     color: const Color(0xFFE2E8F0),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text(
-                        '총 실제 결제(계약+잔금)',
-                        style: TextStyle(fontSize: 12, color: Color(0xFFE53E3E), fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _formatWon(summary.totalActual),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFFE53E3E),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          '총 실제 결제(계약+잔금)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: Color(0xFFE53E3E), fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 3),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            _formatWon(summary.totalActual),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFE53E3E),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -215,6 +239,8 @@ class WeddingBudgetSectionWidget extends ConsumerWidget {
                       children: [
                         Text(
                           item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 14.5,
                             fontWeight: FontWeight.w700,
@@ -222,7 +248,8 @@ class WeddingBudgetSectionWidget extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Row(
+                        // 좁으면 계약금/잔금이 다음 줄로 내려간다.
+                        Wrap(
                           children: [
                             Text(
                               '계약금 ${_formatWon(item.deposit)}',
@@ -240,23 +267,34 @@ class WeddingBudgetSectionWidget extends ConsumerWidget {
                   ),
 
                   // 총 금액
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        _formatWon(item.totalActualCost),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 104),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            _formatWon(item.totalActualCost),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
                         ),
-                      ),
-                      if (item.estimatedBudget > 0)
-                        Text(
-                          '예상: ${_formatWon(item.estimatedBudget)}',
-                          style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
-                        ),
-                    ],
+                        if (item.estimatedBudget > 0)
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              '예상: ${_formatWon(item.estimatedBudget)}',
+                              style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 4),
                   IconButton(
@@ -288,11 +326,20 @@ class WeddingBudgetSectionWidget extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(fontSize: 11.5, color: color, fontWeight: FontWeight.bold)),
+          Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11.5, color: color, fontWeight: FontWeight.bold)),
+          ),
           const SizedBox(width: 6),
-          Text(
-            _formatWon(amount),
-            style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w800),
+          Flexible(
+            child: Text(
+              _formatWon(amount),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w800),
+            ),
           ),
         ],
       ),

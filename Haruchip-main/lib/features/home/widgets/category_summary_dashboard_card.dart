@@ -1332,9 +1332,13 @@ class CategorySummaryDashboardCard extends ConsumerWidget {
         children: [
           Text(emoji, style: const TextStyle(fontSize: 11)),
           const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: palette.text),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: palette.text),
+            ),
           ),
         ],
       ),

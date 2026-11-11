@@ -31,21 +31,28 @@ class TravelCategoryView extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Row(
-              children: [
-                Text('🗺️', style: TextStyle(fontSize: 18)),
-                SizedBox(width: 8),
-                Text(
-                  '여행 로드맵 타임라인',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E293B),
-                    letterSpacing: -0.3,
+            const Expanded(
+              child: Row(
+                children: [
+                  Text('🗺️', style: TextStyle(fontSize: 18)),
+                  SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '여행 로드맵 타임라인',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1E293B),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             Text(
               '총 ${trips.length}개 여행 등록됨',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
@@ -282,20 +289,27 @@ class TravelCategoryView extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Text(trip.emoji, style: const TextStyle(fontSize: 22)),
-                        const SizedBox(width: 8),
-                        Text(
-                          trip.destination,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF2C3E50),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Text(trip.emoji, style: const TextStyle(fontSize: 22)),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              trip.destination,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2C3E50),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                       decoration: BoxDecoration(
@@ -369,16 +383,23 @@ class TravelCategoryView extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.calendar_month_rounded, size: 14, color: Color(0xFF64748B)),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${trip.dateRangeText} (${durationDays - 1}박 $durationDays일)',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                            ),
-                          ],
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_month_rounded, size: 14, color: Color(0xFF64748B)),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  '${trip.dateRangeText} (${durationDays - 1}박 $durationDays일)',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         const Row(
                           children: [
                             Text(
@@ -396,11 +417,11 @@ class TravelCategoryView extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
+                        const Row(
                           children: [
-                            const Text('🎒', style: TextStyle(fontSize: 11)),
-                            const SizedBox(width: 4),
-                            const Text(
+                            Text('🎒', style: TextStyle(fontSize: 11)),
+                            SizedBox(width: 4),
+                            Text(
                               '짐 싸기 진행률',
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                             ),
@@ -489,18 +510,25 @@ class TravelCategoryView extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.alt_route_rounded, size: 16, color: Color(0xFF0284C7)),
-                        const SizedBox(width: 6),
-                        Text(
-                          afterTrip != null
-                              ? '${beforeTrip.destination} ~ ${afterTrip.destination} 사이 준비'
-                              : '다음 여행을 위한 사전 준비',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                        ),
-                      ],
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.alt_route_rounded, size: 16, color: Color(0xFF0284C7)),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              afterTrip != null
+                                  ? '${beforeTrip.destination} ~ ${afterTrip.destination} 사이 준비'
+                                  : '다음 여행을 위한 사전 준비',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     InkWell(
                       onTap: () {
                         AddInterPlanModal.show(

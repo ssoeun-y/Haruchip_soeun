@@ -56,20 +56,27 @@ class BabyHealthCheckupWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Text('🩺', style: TextStyle(fontSize: 18)),
-                  SizedBox(width: 8),
-                  Text(
-                    '국가 영유아 건강검진 (1~8차)',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.protoHeading,
+              const Expanded(
+                child: Row(
+                  children: [
+                    Text('🩺', style: TextStyle(fontSize: 18)),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '국가 영유아 건강검진 (1~8차)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.protoHeading,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -155,7 +162,9 @@ class BabyHealthCheckupWidget extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
                             children: [
                               Text(
                                 '${dose.stage}차 검진',
@@ -166,7 +175,6 @@ class BabyHealthCheckupWidget extends StatelessWidget {
                                   decoration: dose.isCompleted ? TextDecoration.lineThrough : null,
                                 ),
                               ),
-                              const SizedBox(width: 6),
                               Text(
                                 '(${dose.periodLabel})',
                                 style: TextStyle(

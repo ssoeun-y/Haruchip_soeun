@@ -254,21 +254,19 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
                           children: [
                             Wrap(
                               crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 6,
                               runSpacing: 2,
                               children: [
-                                Flexible(
-                                  child: Text(
-                                    dose.name,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: dose.isCompleted ? Colors.grey.shade600 : AppColors.protoHeading,
-                                      decoration: dose.isCompleted ? TextDecoration.lineThrough : null,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                                // Wrap 안에서는 Flexible을 쓸 수 없다 — Wrap이 이미 폭을 넘으면 줄바꿈한다.
+                                Text(
+                                  dose.name,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: dose.isCompleted ? Colors.grey.shade600 : AppColors.protoHeading,
+                                    decoration: dose.isCompleted ? TextDecoration.lineThrough : null,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
