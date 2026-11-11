@@ -9,6 +9,7 @@ import '../../military/models/military_rank.dart';
 import '../../military/providers/military_provider.dart';
 import '../../plan/models/plan_item.dart';
 import '../../plan/providers/plan_provider.dart';
+import '../../shared/widgets/common_date_time_picker.dart';
 import '../../shared/widgets/haru_calendar_picker.dart';
 import '../controllers/baby_category_controller.dart';
 import '../data/baby_health_database.dart';
@@ -1131,9 +1132,12 @@ class _BabyOnboardingSheetState extends ConsumerState<_BabyOnboardingSheet> {
                           const SizedBox(height: 6),
                           InkWell(
                             onTap: () async {
-                              final picked = await showTimePicker(
-                                context: context,
-                                initialTime: TimeOfDay.now(),
+                              final picked = await showCommonDateTimePickerModal(
+                                context,
+                                initialDateTime: DateTime.now(),
+                                isAllDay: false,
+                                showAllDayToggle: false,
+                                title: '출생 시간 선택',
                               );
                               if (picked != null) {
                                 final h = picked.hour.toString().padLeft(2, '0');

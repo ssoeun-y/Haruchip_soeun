@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../shared/widgets/haru_calendar_picker.dart';
 import '../models/solo_profile.dart';
+import 'unified_category_top_card.dart';
 
 /// 솔로 카테고리 심플형 상단 비주얼 카드 및 빠른 태그 위젯
 class SoloTopCardWidget extends StatelessWidget {
@@ -88,11 +89,6 @@ class SoloTopCardWidget extends StatelessWidget {
     final isSelfCare = profile.mode == SoloMode.selfCare;
     final days = profile.daysCount();
 
-    // 단정하고 눈이 편안한 파스텔 톤 팔레트
-    final themeColor = isSelfCare ? const Color(0xFF9333EA) : const Color(0xFFE11D48);
-    final cardBgColor = isSelfCare ? const Color(0xFFFAF5FF) : const Color(0xFFFFF1F2);
-    final borderColor = isSelfCare ? const Color(0xFFE9D5FF) : const Color(0xFFFFE4E6);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -134,16 +130,12 @@ class SoloTopCardWidget extends StatelessWidget {
                       children: [
                         const Text('🌱', style: TextStyle(fontSize: 14)),
                         const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            '나를 위한 시간',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelfCare ? FontWeight.bold : FontWeight.w500,
-                              color: isSelfCare ? const Color(0xFF0F172A) : const Color(0xFF64748B),
-                            ),
+                        Text(
+                          '나를 위한 시간',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelfCare ? FontWeight.bold : FontWeight.w500,
+                            color: isSelfCare ? const Color(0xFF0F172A) : const Color(0xFF64748B),
                           ),
                         ),
                       ],
@@ -180,16 +172,12 @@ class SoloTopCardWidget extends StatelessWidget {
                       children: [
                         const Text('💌', style: TextStyle(fontSize: 14)),
                         const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            '마음 진행 중',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: !isSelfCare ? FontWeight.bold : FontWeight.w500,
-                              color: !isSelfCare ? const Color(0xFF0F172A) : const Color(0xFF64748B),
-                            ),
+                        Text(
+                          '마음 진행 중',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: !isSelfCare ? FontWeight.bold : FontWeight.w500,
+                            color: !isSelfCare ? const Color(0xFF0F172A) : const Color(0xFF64748B),
                           ),
                         ),
                       ],
@@ -202,123 +190,20 @@ class SoloTopCardWidget extends StatelessWidget {
         ),
         const SizedBox(height: 14),
 
-        // 2. 상단 미니멀 파스텔 비주얼 카드
+        // 2. 상단 미니멀 파스텔 비주얼 카드 (통일 폼 팩터)
         if (profile.showTopCard) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: cardBgColor,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: borderColor, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: themeColor.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 헤더 라인 (태그 뱃지 & 상단 카드 숨기기 버튼)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: borderColor),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(profile.mode.emoji, style: const TextStyle(fontSize: 12)),
-                          const SizedBox(width: 4),
-                          Text(
-                            profile.mode.labelKo,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: themeColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        onProfileChanged(profile.copyWith(showTopCard: false));
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.visibility_off_outlined, size: 14, color: Color(0xFF94A3B8)),
-                            SizedBox(width: 4),
-                            Text(
-                              '카드 숨기기',
-                              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // 중앙 메인 타이틀
-                Text(
-                  '${profile.mode.cardTitlePrefix} $days일째',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // 시작일 클릭 수정 영역
-                InkWell(
-                  onTap: () => _pickStartDate(context),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.calendar_today_rounded, size: 13, color: themeColor),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            '시작일: ${_formatDate(profile.activeStartDate)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF334155),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.edit_outlined, size: 13, color: Color(0xFF94A3B8)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          UnifiedCategoryTopCard(
+            categoryKey: 'solo',
+            title: profile.mode.labelKo,
+            symbol: profile.mode.emoji,
+            coreDDayText: '${profile.mode.cardTitlePrefix} $days일째',
+            startDateText: '시작일: ${_formatDate(profile.activeStartDate)}',
+            reunionOrExtraBadge: isSelfCare ? '나에게 집중하는 시간' : '설레는 마음 진행 중',
+            onEditAvatar: () => _pickStartDate(context),
+            onManageSection: () => _pickStartDate(context),
+            onHideCard: () => onProfileChanged(profile.copyWith(showTopCard: false)),
+            manageSectionText: '시작일 변경',
+            fallbackEmoji: isSelfCare ? '🌱' : '💌',
           ),
           const SizedBox(height: 16),
         ] else ...[
@@ -356,25 +241,20 @@ class SoloTopCardWidget extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Expanded(
-              child: Row(
-                children: [
-                  Text('✨', style: TextStyle(fontSize: 14)),
-                  SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      '나만의 갓생 & 플랜 빠른 태그',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
+            const Row(
+              children: [
+                Text('✨', style: TextStyle(fontSize: 14)),
+                SizedBox(width: 6),
+                Text(
+                  '나만의 갓생 & 플랜 빠른 태그',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 6),
             TextButton.icon(
               onPressed: () => _showAddTagDialog(context),
               icon: const Icon(Icons.add, size: 14),

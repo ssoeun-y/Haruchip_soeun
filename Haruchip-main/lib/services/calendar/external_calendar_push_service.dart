@@ -149,19 +149,69 @@ class ExternalCalendarPushService {
     return buffer.toString();
   }
 
-  /// 하루칩 카테고리에 맞는 최적의 구글 캘린더 컬러 ID 매핑 (1~11)
-  String mapCategoryToGoogleColorId(String categoryKey) {
+  /// Google Calendar 표준 색상 팔레트 (1 ~ 11)
+  static const Map<String, int> _googleCalendarColorPalette = {
+    '1': 0xFF7986CB, // Lavender (라벤더/블루)
+    '2': 0xFF33B679, // Sage (세이지 그린)
+    '3': 0xFF8E24AA, // Grape (포도/보라)
+    '4': 0xFFE67C73, // Flamingo (플라밍고/코랄핑크)
+    '5': 0xFFF6BF26, // Banana (바나나/옐로우)
+    '6': 0xFFF4511E, // Tangerine (탠저린/오렌지)
+    '7': 0xFF039BE5, // Peacock (피콕/스카이블루)
+    '8': 0xFF616161, // Graphite (흑연/그레이)
+    '9': 0xFF3F51B5, // Blueberry (블루베리/인디고)
+    '10': 0xFF0B8043, // Basil (바질/다크그린)
+    '11': 0xFFD50000, // Tomato (토마토/레드)
+  };
+
+  /// 주어진 Hex 색상과 RGB 유클리드 거리가 가장 가까운 구글 캘린더 ColorId (1~11) 반환
+  String mapHexToGoogleColorId(String hexColor) {
+    try {
+      final clean = hexColor.replaceFirst('#', '');
+      final int val = int.parse(clean.length == 6 ? 'FF$clean' : clean, radix: 16);
+      final r = (val >> 16) & 0xFF;
+      final g = (val >> 8) & 0xFF;
+      final b = val & 0xFF;
+
+      String closestId = '1';
+      double minDistance = double.infinity;
+
+      _googleCalendarColorPalette.forEach((id, rgbVal) {
+        final gr = (rgbVal >> 16) & 0xFF;
+        final gg = (rgbVal >> 8) & 0xFF;
+        final gb = rgbVal & 0xFF;
+
+        final dist = (r - gr) * (r - gr) + (g - gg) * (g - gg) + (b - gb) * (b - gb);
+        if (dist < minDistance) {
+          minDistance = dist.toDouble();
+          closestId = id;
+        }
+      });
+      return closestId;
+    } catch (_) {
+      return '1';
+    }
+  }
+
+  /// 하루칩 카테고리 또는 지정 파스텔 색상에 맞는 최적의 구글 캘린더 컬러 ID 매핑 (1~11)
+  String mapCategoryToGoogleColorId(String categoryKey, {String? colorHex}) {
+    if (colorHex != null && colorHex.isNotEmpty) {
+      return mapHexToGoogleColorId(colorHex);
+    }
     return switch (categoryKey) {
-      'couple' => '4', // Flamingo (핑크/코랄)
-      'solo' => '3', // Grape (퍼플)
-      'fandom' => '5', // Banana (옐로우)
+      'couple' => '4', // Flamingo (연핑크)
+      'solo' => '3', // Grape (연보라)
+      'fandom' => '5', // Banana (파스텔 옐로우)
+      'baby' => '5', // Banana / Soft Yellow
       'group' => '10', // Basil (에메랄드 그린)
       'exam' => '9', // Blueberry (인디고 블루)
-      'birthday' => '11', // Tomato (레드 핑크)
+      'birthday' => '4', // Flamingo (핑크/로즈)
       'military' => '8', // Graphite (카키 그레이)
-      'baby' => '6', // Tangerine (오렌지 골드)
-      'pet' => '2', // Sage (브라운 세이지)
-      'plan' => '1', // Lavender / Blue (기본 블루)
+      'wedding' => '4', // Flamingo (로맨틱 로즈)
+      'travel' => '7', // Peacock (스카이블루)
+      'hobby' => '2', // Sage (세이지/민트)
+      'pet' => '6', // Tangerine (파스텔 피치/오렌지)
+      'plan' => '1', // Lavender (파스텔 블루)
       _ => '1',
     };
   }
@@ -174,6 +224,7 @@ class ExternalCalendarPushService {
     DateTime? endDate,
     bool isAllDay = true,
     String? categoryKey,
+    String? colorHex,
     String? description,
     EventReminder reminder = EventReminder.none,
     RepeatConfig? repeatConfig,
@@ -188,7 +239,7 @@ class ExternalCalendarPushService {
         );
       }
 
-      final colorId = mapCategoryToGoogleColorId(categoryKey ?? 'plan');
+      final colorId = mapCategoryToGoogleColorId(categoryKey ?? 'plan', colorHex: colorHex);
       final eventId = 'google_ev_${DateTime.now().microsecondsSinceEpoch}';
       final formattedStart = formatKstDate(startDate, isAllDay: isAllDay);
       final formattedEnd = formatKstDate(endDate ?? startDate, isAllDay: isAllDay);
@@ -293,6 +344,7 @@ class ExternalCalendarPushService {
     required PlanItem item,
     String? googleCalendarId,
     String? naverCalendarId,
+    String? categoryColorHex,
   }) async {
     final results = <CalendarPushResult>[];
 
@@ -304,6 +356,7 @@ class ExternalCalendarPushService {
         endDate: item.endDate,
         isAllDay: item.isAllDay,
         categoryKey: item.categoryKey,
+        colorHex: categoryColorHex,
         reminder: item.reminder,
         repeatConfig: item.repeatConfig,
       );

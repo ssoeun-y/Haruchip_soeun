@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,10 +10,7 @@ import '../../../design_system/typography.dart';
 import '../../plan/models/plan_item.dart';
 import '../../plan/providers/plan_provider.dart';
 import '../../shared/widgets/add_event_bottom_sheet.dart';
-import '../../trash/logic/trash_service.dart';
-import '../../trash/models/trash_item.dart';
 import '../data/baby_health_database.dart';
-import '../logic/category_entry_mirrors.dart';
 import '../models/baby_profile.dart';
 import '../models/birthday_profile.dart';
 import '../models/category.dart';
@@ -20,12 +21,15 @@ import '../widgets/baby_care_history_modal.dart';
 import '../widgets/baby_care_quick_bar_widget.dart';
 import '../widgets/baby_growth_card_widget.dart';
 import '../widgets/baby_growth_record_modal.dart';
+import '../widgets/baby_growth_records_widget.dart';
 import '../widgets/baby_health_checkup_widget.dart';
 import '../widgets/baby_vaccine_timeline_widget.dart';
 import '../widgets/birthday_friend_modal.dart';
 import '../widgets/birthday_grid_card_widget.dart';
 import '../widgets/category_edit_modal.dart';
 import '../widgets/category_onboarding_sheets.dart';
+import '../widgets/skin_theme_card_container.dart';
+import '../widgets/unified_category_top_card.dart';
 import '../widgets/fandom_member_list_widget.dart';
 import '../widgets/fandom_topkku_card_widget.dart';
 import '../widgets/pet_family_card_carousel_widget.dart';
@@ -46,6 +50,15 @@ import '../widgets/add_exam_modal.dart';
 import '../widgets/exam_card_widget.dart';
 import '../widgets/exam_official_db_modal.dart';
 import '../widgets/solo_top_card_widget.dart';
+import '../../hobby/widgets/add_hobby_modal.dart';
+import '../../hobby/widgets/hobby_category_view.dart';
+import '../../group/widgets/add_group_modal.dart';
+import '../../group/widgets/group_category_view.dart';
+import '../../travel/widgets/add_trip_modal.dart';
+import '../../travel/widgets/travel_category_view.dart';
+import '../../wedding/widgets/wedding_category_view.dart';
+import '../../wedding/widgets/wedding_couple_share_modal.dart';
+import '../../wedding/widgets/wedding_smart_scheduler_modal.dart';
 
 /// 전체 카테고리 범용 상세 화면 (듀얼 리스트 & 카테고리 온보딩 & 꾸미기 에디터 연동)
 class CategoryDetailScreen extends ConsumerStatefulWidget {
@@ -67,14 +80,394 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   bool _isReorderingMode = false;
   List<PlanItem> _customCountUpOrder = [];
 
+  // Countdown timer for real-time D-Day tick and auto-expiration
+  Timer? _countdownTicker;
+
+  // Baby section management definitions
+  static const List<String> kDefaultBabySectionOrder = [
+    'careQuickBar',
+    'vaccineTimeline',
+    'healthCheckup',
+    'growthRecords',
+    'countUpList',
+    'dDayList',
+  ];
+
+  static const Map<String, ({String label, IconData icon, String subtitle})> kBabySectionMeta = {
+    'careQuickBar': (
+      label: '원터치 케어 타임로그',
+      icon: Icons.timer_outlined,
+      subtitle: '수유, 수면, 배변 원터치 기록 및 히스토리',
+    ),
+    'vaccineTimeline': (
+      label: '국가 표준 필수 예방접종',
+      icon: Icons.vaccines_outlined,
+      subtitle: '질병관리청 KCDA 표준 일정 및 완료 관리',
+    ),
+    'healthCheckup': (
+      label: '국가 영유아 건강검진',
+      icon: Icons.medical_services_outlined,
+      subtitle: '생후 14일~71개월 (1~8차) 건강검진',
+    ),
+    'growthRecords': (
+      label: '신체 성장 기록',
+      icon: Icons.straighten_rounded,
+      subtitle: '키, 몸무게 측정치 및 성장 변화 기록',
+    ),
+    'countUpList': (
+      label: 'N일째 리스트',
+      icon: Icons.trending_up_rounded,
+      subtitle: '생후 일수 및 성장 기념일 카운트업',
+    ),
+    'dDayList': (
+      label: '세부 D-Day 리스트',
+      icon: Icons.event_note_rounded,
+      subtitle: '돌잔치, 백일, 병원 예약 등 다가오는 일정',
+    ),
+  };
+
+  List<String> _getBabySectionOrder() {
+    final meta = _category.metadata;
+    if (meta?['babySectionOrder'] is List) {
+      final list = (meta!['babySectionOrder'] as List).map((e) => e.toString()).toList();
+      final existing = list.toSet();
+      for (final sec in kDefaultBabySectionOrder) {
+        if (!existing.contains(sec)) {
+          list.add(sec);
+        }
+      }
+      return list;
+    }
+    try {
+      final file = File('haruchip_baby_sections.json');
+      if (file.existsSync()) {
+        final content = file.readAsStringSync();
+        final map = jsonDecode(content);
+        if (map['order'] is List) {
+          final list = (map['order'] as List).map((e) => e.toString()).toList();
+          final existing = list.toSet();
+          for (final sec in kDefaultBabySectionOrder) {
+            if (!existing.contains(sec)) {
+              list.add(sec);
+            }
+          }
+          return list;
+        }
+      }
+    } catch (_) {}
+    return List.from(kDefaultBabySectionOrder);
+  }
+
+  Set<String> _getBabyHiddenSections() {
+    final meta = _category.metadata;
+    if (meta?['babyHiddenSections'] is List) {
+      return (meta!['babyHiddenSections'] as List).map((e) => e.toString()).toSet();
+    }
+    try {
+      final file = File('haruchip_baby_sections.json');
+      if (file.existsSync()) {
+        final content = file.readAsStringSync();
+        final map = jsonDecode(content);
+        if (map['hidden'] is List) {
+          return (map['hidden'] as List).map((e) => e.toString()).toSet();
+        }
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  void _saveBabySectionConfig(List<String> order, Set<String> hidden) {
+    final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
+    currentMeta['babySectionOrder'] = order;
+    currentMeta['babyHiddenSections'] = hidden.toList();
+    currentMeta['isInitialized'] = true;
+
+    final updated = _category.copyWith(metadata: currentMeta);
+    setState(() {
+      _category = updated;
+    });
+    ref.read(categoryListProvider.notifier).updateCategory(updated);
+
+    try {
+      final file = File('haruchip_baby_sections.json');
+      file.writeAsStringSync(jsonEncode({
+        'order': order,
+        'hidden': hidden.toList(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      }));
+    } catch (_) {}
+  }
+
+  void _openBabySectionManagementModal() {
+    final currentOrder = List<String>.from(_getBabySectionOrder());
+    final currentHidden = Set<String>.from(_getBabyHiddenSections());
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            return Container(
+              height: MediaQuery.of(sheetContext).size.height * 0.78,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFAF9F6),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+                    decoration: const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.tune_rounded, size: 20, color: Color(0xFF2563EB)),
+                            ),
+                            const SizedBox(width: 10),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '아기 메인 섹션 관리',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.protoHeading,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  '체크박스로 숨김/표시, 순서 재배치',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Theme(
+                      data: Theme.of(modalContext).copyWith(
+                        canvasColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                      ),
+                      child: ReorderableListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        itemCount: currentOrder.length,
+                        onReorder: (oldIndex, newIndex) {
+                          setModalState(() {
+                            if (oldIndex < newIndex) newIndex -= 1;
+                            final item = currentOrder.removeAt(oldIndex);
+                            currentOrder.insert(newIndex, item);
+                          });
+                        },
+                        itemBuilder: (context, index) {
+                          final secKey = currentOrder[index];
+                          final meta = kBabySectionMeta[secKey];
+                          final isHidden = currentHidden.contains(secKey);
+
+                          return Container(
+                            key: ValueKey('sec-$secKey'),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isHidden ? const Color(0xFFF1F5F9) : Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isHidden ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1),
+                                width: isHidden ? 1 : 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Checkbox(
+                                  value: !isHidden,
+                                  activeColor: const Color(0xFF2563EB),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                  onChanged: (val) {
+                                    setModalState(() {
+                                      if (val == true) {
+                                        currentHidden.remove(secKey);
+                                      } else {
+                                        currentHidden.add(secKey);
+                                      }
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  meta?.icon ?? Icons.dashboard_customize_outlined,
+                                  size: 20,
+                                  color: isHidden ? const Color(0xFF94A3B8) : const Color(0xFF2563EB),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            meta?.label ?? secKey,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: isHidden ? const Color(0xFF94A3B8) : AppColors.protoHeading,
+                                              decoration: isHidden ? TextDecoration.lineThrough : null,
+                                            ),
+                                          ),
+                                          if (isHidden) ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFE2E8F0),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: const Text(
+                                                '숨김',
+                                                style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        meta?.subtitle ?? '',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: isHidden ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_upward_rounded, size: 18),
+                                  color: index > 0 ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                  onPressed: index > 0
+                                      ? () {
+                                          setModalState(() {
+                                            final item = currentOrder.removeAt(index);
+                                            currentOrder.insert(index - 1, item);
+                                          });
+                                        }
+                                      : null,
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_downward_rounded, size: 18),
+                                  color: index < currentOrder.length - 1 ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                  onPressed: index < currentOrder.length - 1
+                                      ? () {
+                                          setModalState(() {
+                                            final item = currentOrder.removeAt(index);
+                                            currentOrder.insert(index + 1, item);
+                                          });
+                                        }
+                                      : null,
+                                ),
+                                const SizedBox(width: 2),
+                                ReorderableDragStartListener(
+                                  index: index,
+                                  child: const Icon(Icons.drag_handle_rounded, color: Color(0xFF94A3B8)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+                    ),
+                    child: Row(
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            setModalState(() {
+                              currentOrder.clear();
+                              currentOrder.addAll(kDefaultBabySectionOrder);
+                              currentHidden.clear();
+                            });
+                          },
+                          child: const Text('기본값 복원', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                        ),
+                        const Spacer(),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () {
+                            _saveBabySectionConfig(currentOrder, currentHidden);
+                            Navigator.pop(sheetContext);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('✨ 아기 메인 섹션 순서 및 표시 설정이 저장되었습니다.'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: const Text('저장 완료', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _category = widget.category;
+    _countdownTicker = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) setState(() {});
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkOnboarding();
     });
+  }
+
+  @override
+  void dispose() {
+    _countdownTicker?.cancel();
+    super.dispose();
   }
 
   void _checkOnboarding() {
@@ -305,7 +698,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<BirthdayProfile> _getBirthdayFriends() {
     final meta = _category.metadata;
     final friendsRaw = meta?['friends'] as List<dynamic>?;
-    if (friendsRaw != null) {
+    if (friendsRaw != null && friendsRaw.isNotEmpty) {
       return friendsRaw
           .map((e) => BirthdayProfile.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
@@ -313,43 +706,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
     return kDefaultMockBirthdayFriends;
   }
 
-  /// [before]에서 빠진(=사용자가 삭제한) 항목을 바로 지우지 않고 휴지통으로
-  /// 보낸다 — 30일 안에 원래 카테고리로 복구할 수 있다. 수정은 id가
-  /// 그대로라 해당하지 않는다.
-  void _trashRemoved<T>({
-    required List<T> before,
-    required List<T> after,
-    required String Function(T) idOf,
-    required TrashEntityType type,
-    required String metaKey,
-    required Map<String, dynamic> Function(T) toJson,
-    required String Function(T) titleOf,
-    Set<String> Function(T)? mirrorPlanIdsOf,
-  }) {
-    final trash = ref.read(trashServiceProvider);
-    for (final e in removedById(before, after, idOf)) {
-      trash.trashCategoryEntry(
-        type: type,
-        category: _category,
-        metaKey: metaKey,
-        entry: toJson(e),
-        title: titleOf(e),
-        mirrorPlanIds: mirrorPlanIdsOf?.call(e) ?? const {},
-      );
-    }
-  }
-
   void _saveBirthdayFriends(List<BirthdayProfile> friends) {
-    _trashRemoved(
-      before: _getBirthdayFriends(),
-      after: friends,
-      idOf: (f) => f.id,
-      type: TrashEntityType.birthday,
-      metaKey: 'friends',
-      toJson: (f) => f.toJson(),
-      titleOf: (f) => '${f.name} 생일',
-      mirrorPlanIdsOf: (f) => {f.id},
-    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['friends'] = friends.map((f) => f.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -375,7 +732,17 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           ),
         );
       } else {
-        planNotifier.addItem(birthdayMirror(friend, _category.id));
+        planNotifier.addItem(
+          PlanItem(
+            id: friend.id,
+            title: '${friend.name} 생일',
+            date: friend.nextBirthdayDate(),
+            categoryKey: 'birthday',
+            categoryInstanceId: _category.id,
+            repeat: true,
+            photoUrl: friend.photoUrl,
+          ),
+        );
       }
     }
   }
@@ -416,23 +783,13 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<GoalItem> _getGoals() {
     final meta = _category.metadata;
     final raw = meta?['goals'] as List<dynamic>?;
-    if (raw != null) {
+    if (raw != null && raw.isNotEmpty) {
       return raw.map((e) => GoalItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     }
     return kDefaultMockGoals;
   }
 
   void _saveGoals(List<GoalItem> goals) {
-    _trashRemoved(
-      before: _getGoals(),
-      after: goals,
-      idOf: (g) => g.id,
-      type: TrashEntityType.goal,
-      metaKey: 'goals',
-      toJson: (g) => g.toJson(),
-      titleOf: (g) => g.title,
-      mirrorPlanIdsOf: (g) => {g.id},
-    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['goals'] = goals.map((g) => g.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -446,8 +803,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
     final planNotifier = ref.read(planListProvider.notifier);
     final allPlanItems = ref.read(planListProvider);
     for (final g in goals) {
-      final mirror = goalMirror(g, _category.id);
-      if (mirror != null) {
+      if (g.showInCalendar && g.deadline != null) {
         final existing = allPlanItems.where((p) => p.id == g.id).toList();
         if (existing.isNotEmpty) {
           planNotifier.updateItem(
@@ -457,7 +813,16 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
             ),
           );
         } else {
-          planNotifier.addItem(mirror);
+          planNotifier.addItem(
+            PlanItem(
+              id: g.id,
+              title: g.title,
+              date: g.deadline!,
+              categoryKey: 'goal',
+              categoryInstanceId: _category.id,
+              repeat: false,
+            ),
+          );
         }
       } else {
         ref.read(planListProvider.notifier).removeItem(g.id);
@@ -483,23 +848,13 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<AppointmentItem> _getAppointments() {
     final meta = _category.metadata;
     final raw = meta?['appointments'] as List<dynamic>?;
-    if (raw != null) {
+    if (raw != null && raw.isNotEmpty) {
       return raw.map((e) => AppointmentItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     }
     return kDefaultMockAppointments;
   }
 
   void _saveAppointments(List<AppointmentItem> appointments) {
-    _trashRemoved(
-      before: _getAppointments(),
-      after: appointments,
-      idOf: (a) => a.id,
-      type: TrashEntityType.appointment,
-      metaKey: 'appointments',
-      toJson: (a) => a.toJson(),
-      titleOf: (a) => a.title,
-      mirrorPlanIdsOf: (a) => {a.id},
-    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['appointments'] = appointments.map((a) => a.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -522,7 +877,16 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           ),
         );
       } else {
-        planNotifier.addItem(appointmentMirror(a, _category.id));
+        planNotifier.addItem(
+          PlanItem(
+            id: a.id,
+            title: a.title,
+            date: a.date,
+            categoryKey: 'plan',
+            categoryInstanceId: _category.id,
+            repeat: false,
+          ),
+        );
       }
     }
   }
@@ -545,22 +909,13 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<RoutineItem> _getRoutines() {
     final meta = _category.metadata;
     final raw = meta?['routines'] as List<dynamic>?;
-    if (raw != null) {
+    if (raw != null && raw.isNotEmpty) {
       return raw.map((e) => RoutineItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     }
     return kDefaultMockRoutines;
   }
 
   void _saveRoutines(List<RoutineItem> routines) {
-    _trashRemoved(
-      before: _getRoutines(),
-      after: routines,
-      idOf: (r) => r.id,
-      type: TrashEntityType.routine,
-      metaKey: 'routines',
-      toJson: (r) => r.toJson(),
-      titleOf: (r) => r.title,
-    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['routines'] = routines.map((r) => r.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -733,11 +1088,50 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
     }
   }
 
+  Future<void> _handleOpenEditGrowthRecord(GrowthRecord existing) async {
+    final result = await showBabyGrowthRecordModal(
+      context,
+      existingRecord: existing,
+      onDelete: () => _handleDeleteGrowthRecord(existing.id),
+    );
+    if (result != null && mounted) {
+      final profile = _getBabyProfile();
+      final updatedRecords = profile.growthRecords
+          .map((r) => r.id == existing.id ? result : r)
+          .toList();
+      final updatedProfile = profile.copyWith(growthRecords: updatedRecords);
+      _saveBabyProfile(updatedProfile);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✏️ 신체 성장 기록이 수정되었습니다.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _handleDeleteGrowthRecord(String recordId) {
+    final profile = _getBabyProfile();
+    final updatedRecords = profile.growthRecords
+        .where((r) => r.id != recordId)
+        .toList();
+    final updatedProfile = profile.copyWith(growthRecords: updatedRecords);
+    _saveBabyProfile(updatedProfile);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🗑️ 신체 성장 기록이 삭제되었습니다.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   // 6. Exam category methods
   List<ExamProfile> _getExams() {
     final meta = _category.metadata;
     final raw = meta?['exams'] as List<dynamic>?;
-    if (raw != null) {
+    if (raw != null && raw.isNotEmpty) {
       return raw.map((e) => ExamProfile.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     }
     // Default preset if not initialized
@@ -796,19 +1190,6 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   }
 
   void _saveExams(List<ExamProfile> exams) {
-    _trashRemoved(
-      before: _getExams(),
-      after: exams,
-      idOf: (e) => e.id,
-      type: TrashEntityType.exam,
-      metaKey: 'exams',
-      toJson: (e) => e.toJson(),
-      titleOf: (e) => e.title,
-      mirrorPlanIdsOf: (e) => {
-        for (final s in e.subjects) 'exam-plan-${s.id}',
-        for (final s in e.stages) 'exam-plan-${s.id}',
-      },
-    );
     final currentMeta = Map<String, dynamic>.from(_category.metadata ?? {});
     currentMeta['exams'] = exams.map((e) => e.toJson()).toList();
     currentMeta['isInitialized'] = true;
@@ -833,8 +1214,36 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
 
     // Add updated plans
     for (final exam in exams) {
-      for (final mirror in examMirrors(exam, _category.id)) {
-        planNotifier.addItem(mirror);
+      if (!exam.showInMainCalendar) continue;
+
+      if (exam.type == ExamType.midterm || exam.type == ExamType.finalExam) {
+        for (final sub in exam.subjects) {
+          planNotifier.addItem(
+            PlanItem(
+              id: 'exam-plan-${sub.id}',
+              title: '[${exam.title}] ${sub.period}교시 ${sub.subjectName}',
+              date: sub.examDate,
+              categoryKey: 'exam',
+              categoryInstanceId: _category.id,
+              repeat: false,
+            ),
+          );
+        }
+      } else {
+        for (final stage in exam.stages) {
+          if (!stage.isEnded() || stage.stageType.isExamDay) {
+            planNotifier.addItem(
+              PlanItem(
+                id: 'exam-plan-${stage.id}',
+                title: '[${exam.title}] ${stage.name}',
+                date: stage.startDate,
+                categoryKey: 'exam',
+                categoryInstanceId: _category.id,
+                repeat: false,
+              ),
+            );
+          }
+        }
       }
     }
   }
@@ -913,10 +1322,29 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
       }
 
       final targetOnly = DateTime(targetDate.year, targetDate.month, targetDate.day);
-      if (targetOnly.isBefore(todayOnly)) {
-        pastItems.add(item);
+
+      // 시간 설정 항목 (요구사항 6)
+      if (item.deadlineTime != null && !item.isAllDay) {
+        final fullTargetTime = DateTime(
+          targetDate.year,
+          targetDate.month,
+          targetDate.day,
+          item.deadlineTime!.hour,
+          item.deadlineTime!.minute,
+        );
+
+        if (fullTargetTime.isBefore(now)) {
+          // 시간이 완전히 지나면(경과 시) D+1 같은 경과 표기를 띄우지 않고 자동 숨김 처리
+          continue;
+        } else {
+          futureItems.add(item);
+        }
       } else {
-        futureItems.add(item);
+        if (targetOnly.isBefore(todayOnly)) {
+          pastItems.add(item);
+        } else {
+          futureItems.add(item);
+        }
       }
     }
 
@@ -933,7 +1361,14 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           dateB = tB.isBefore(todayOnly) ? DateTime(todayOnly.year + 1, b.date.month, b.date.day) : tB;
         }
       }
-      return dateA.compareTo(dateB);
+      final compDate = dateA.compareTo(dateB);
+      if (compDate != 0) return compDate;
+      if (a.deadlineTime != null && b.deadlineTime != null) {
+        final minA = a.deadlineTime!.hour * 60 + a.deadlineTime!.minute;
+        final minB = b.deadlineTime!.hour * 60 + b.deadlineTime!.minute;
+        return minA.compareTo(minB);
+      }
+      return 0;
     });
 
     pastItems.sort((a, b) => b.date.compareTo(a.date));
@@ -1068,7 +1503,117 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                 ),
               ],
             )
+          else if (_category.categoryKey == 'wedding')
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () => showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (ctx) => const WeddingSmartSchedulerModal(),
+                  ),
+                  icon: const Icon(Icons.auto_awesome, size: 16, color: Color(0xFFE53E3E)),
+                  label: const Text(
+                    '스케줄러',
+                    style: TextStyle(
+                      color: Color(0xFFE53E3E),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => WeddingCoupleShareModal.show(context),
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 20, color: Color(0xFFE53E3E)),
+                  tooltip: '신랑/신부 공동 관리 초대',
+                ),
+                const SizedBox(width: 4),
+              ],
+            )
+          else if (_category.categoryKey == 'travel')
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () => AddTripModal.show(context),
+                  icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF0284C7)),
+                  label: const Text(
+                    '새 여행',
+                    style: TextStyle(
+                      color: Color(0xFF0284C7),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _openEditModal,
+                  icon: const Icon(Icons.palette_outlined, size: 20, color: AppColors.protoHeading),
+                  tooltip: '꾸미기',
+                ),
+                const SizedBox(width: 4),
+              ],
+            )
+          else if (_category.categoryKey == 'hobby')
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () => AddHobbyModal.show(context),
+                  icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF354235)),
+                  label: const Text(
+                    '새 취미',
+                    style: TextStyle(
+                      color: Color(0xFF354235),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _openEditModal,
+                  icon: const Icon(Icons.palette_outlined, size: 20, color: AppColors.protoHeading),
+                  tooltip: '꾸미기',
+                ),
+                const SizedBox(width: 4),
+              ],
+            )
+          else if (_category.categoryKey == 'group')
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () => AddGroupModal.show(context),
+                  icon: const Icon(Icons.add_rounded, size: 16, color: Color(0xFFE26D5C)),
+                  label: const Text(
+                    '새 모임',
+                    style: TextStyle(
+                      color: Color(0xFFE26D5C),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _openEditModal,
+                  icon: const Icon(Icons.palette_outlined, size: 20, color: AppColors.protoHeading),
+                  tooltip: '꾸미기',
+                ),
+                const SizedBox(width: 4),
+              ],
+            )
           else ...[
+            if (_category.categoryKey == 'baby')
+              TextButton.icon(
+                onPressed: _openBabySectionManagementModal,
+                icon: const Icon(Icons.tune_rounded, size: 16, color: Color(0xFF2563EB)),
+                label: const Text(
+                  '섹션 관리',
+                  style: TextStyle(
+                    color: Color(0xFF2563EB),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
             if (_category.categoryKey != 'pet')
               TextButton.icon(
                 onPressed: _openEditModal,
@@ -1127,7 +1672,15 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                               ? _buildBirthdayBody()
                               : _category.categoryKey == 'exam'
                                   ? _buildExamBody()
-                                  : Column(
+                                  : _category.categoryKey == 'wedding'
+                                      ? _buildWeddingBody()
+                                      : _category.categoryKey == 'travel'
+                                          ? _buildTravelBody()
+                                          : _category.categoryKey == 'hobby'
+                                              ? _buildHobbyBody()
+                                              : _category.categoryKey == 'group'
+                                                  ? _buildGroupBody()
+                                                  : Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                   // 1. 상단 카드 영역 (Pet: 패밀리 카드 캐러셀 / 기타: 커스텀 꾸미기 카드)
@@ -1184,27 +1737,32 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                         );
                         if (updated == true && mounted) _reloadCategory();
                       },
+                      onTapManageSections: _openBabySectionManagementModal,
                     ),
                     const SizedBox(height: 16),
-                    BabyCareQuickBarWidget(
-                      profile: _getBabyProfile(),
-                      onLogQuickCare: _handleQuickCareLog,
-                      onLogDetailedCare: _handleDetailedCareLog,
-                      onOpenCareHistory: _handleOpenCareHistory,
-                    ),
-                    const SizedBox(height: 16),
-                    BabyVaccineTimelineWidget(
-                      profile: _getBabyProfile(),
-                      onToggleVaccine: _handleToggleVaccine,
-                      onUpdateVaccine: (v) {},
-                    ),
-                    const SizedBox(height: 16),
-                    BabyHealthCheckupWidget(
-                      profile: _getBabyProfile(),
-                      onToggleCheckup: _handleToggleCheckup,
-                      onOpenAddGrowthRecord: _handleOpenAddGrowthRecord,
-                    ),
-                    const SizedBox(height: 20),
+                    for (final secKey in _getBabySectionOrder())
+                      if (!_getBabyHiddenSections().contains(secKey)) ...[
+                        _buildBabySectionContent(secKey, countUpItems, countDownItems, petProfiles),
+                        const SizedBox(height: 16),
+                      ],
+                    if (_getBabyHiddenSections().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: _openBabySectionManagementModal,
+                          icon: const Icon(Icons.tune_rounded, size: 16, color: Color(0xFF2563EB)),
+                          label: Text(
+                            '숨겨진 섹션 ${_getBabyHiddenSections().length}개 관리하기',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                   ] else if (_category.categoryKey == 'solo') ...[
                     SoloTopCardWidget(
                       profile: _getSoloProfile(),
@@ -1214,38 +1772,16 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                     ),
                     const SizedBox(height: 16),
                   ] else if (_category.showVisualCard) ...[
-                    GestureDetector(
-                      onTap: _openCategorySpecificSettings,
-                      child: Container(
-                        width: double.infinity,
-                        height: 190,
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: singleColor ?? AppColors.protoCardBg,
-                          gradient: gradientColors != null ? LinearGradient(colors: gradientColors) : null,
-                          image: hasImage
-                              ? DecorationImage(
-                                  image: bgConfig.imageUrl!.startsWith('http')
-                                      ? NetworkImage(bgConfig.imageUrl!) as ImageProvider
-                                      : AssetImage(bgConfig.imageUrl!),
-                                  fit: BoxFit.cover,
-                                  colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.15), BlendMode.darken),
-                                )
-                              : null,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: AppColors.protoCardBorder, width: 1.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: LayoutBuilder(
+                    Builder(
+                      builder: (context) {
+                        final skinTheme = _category.skinTheme;
+                        final cardContent = LayoutBuilder(
                           builder: (context, cardConstraints) {
                             final cWidth = cardConstraints.maxWidth;
                             final cHeight = cardConstraints.maxHeight;
+                            final activeTextColor = skinTheme != null
+                                ? colorFromHex(skinTheme.textColor)
+                                : textColor;
 
                             return Stack(
                               children: [
@@ -1266,13 +1802,18 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Text(_category.icon, style: const TextStyle(fontSize: 28)),
+                                              Text(
+                                                skinTheme?.accentEmoji.isNotEmpty == true
+                                                    ? skinTheme!.accentEmoji
+                                                    : _category.icon,
+                                                style: const TextStyle(fontSize: 28),
+                                              ),
                                               const SizedBox(width: 8),
                                               Text(
                                                 _category.name,
                                                 style: TextStyle(
                                                   fontFamily: typoConfig.fontFamily,
-                                                  color: hasImage ? Colors.white : textColor,
+                                                  color: hasImage ? Colors.white : activeTextColor,
                                                   fontSize: typoConfig.fontSize + 4,
                                                   fontWeight: FontWeight.bold,
                                                   shadows: hasImage
@@ -1344,144 +1885,133 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                               ],
                             );
                           },
-                        ),
-                      ),
+                        );
+
+                        if (skinTheme != null) {
+                          return SkinThemeCardContainer(
+                            theme: skinTheme,
+                            width: double.infinity,
+                            height: 190,
+                            onTap: _openCategorySpecificSettings,
+                            child: cardContent,
+                          );
+                        }
+
+                        if (!hasImage &&
+                            (_category.categoryKey == 'custom' ||
+                             _category.categoryKey == 'plan' ||
+                             _category.categoryKey == 'hobby' ||
+                             _category.categoryKey == 'travel')) {
+                          final topCountDown = countDownItems.isNotEmpty ? countDownItems.first : null;
+                          final topCountUp = countUpItems.isNotEmpty ? countUpItems.first : null;
+                          final now = DateTime.now();
+                          final today = DateTime(now.year, now.month, now.day);
+
+                          String dDayStr;
+                          String startStr;
+                          String badgeStr;
+
+                          if (_category.categoryKey == 'hobby') {
+                            if (topCountDown != null) {
+                              dDayStr = '${topCountDown.title} ${dDayLabel(topCountDown.date)}';
+                            } else if (topCountUp != null) {
+                              final days = now.difference(topCountUp.date).inDays + 1;
+                              dDayStr = '${_category.name} 시작한 지 $days일째';
+                            } else {
+                              dDayStr = '${_category.name} 시작한 지 1일째';
+                            }
+                            startStr = topCountUp != null
+                                ? '시작일: ${topCountUp.date.year}.${topCountUp.date.month.toString().padLeft(2, '0')}.${topCountUp.date.day.toString().padLeft(2, '0')}'
+                                : '나만의 취미 기록';
+                            badgeStr = '이번 달 12회 완료';
+                          } else if (_category.categoryKey == 'travel') {
+                            final targetDate = topCountDown?.date ?? topCountUp?.date;
+                            if (targetDate != null) {
+                              final tDate = DateTime(targetDate.year, targetDate.month, targetDate.day);
+                              if (today.isBefore(tDate)) {
+                                final diff = tDate.difference(today).inDays;
+                                dDayStr = diff == 0 ? '오늘 출발 D-Day' : '출발 D-$diff';
+                              } else if (today.isAtSameMomentAs(tDate)) {
+                                dDayStr = '여행 1일차';
+                              } else {
+                                final past = today.difference(tDate).inDays;
+                                dDayStr = '다녀온 지 $past일째';
+                              }
+                              startStr = '여행 기간: ${targetDate.year}.${targetDate.month.toString().padLeft(2, '0')}.${targetDate.day.toString().padLeft(2, '0')}';
+                            } else {
+                              dDayStr = '설레는 여행 준비 중';
+                              startStr = '여행 기간 미정';
+                            }
+                            badgeStr = '여행 준비 일정 ${countDownItems.length}개';
+                          } else {
+                            dDayStr = topCountDown != null
+                                ? dDayLabel(topCountDown.date)
+                                : (topCountUp != null
+                                    ? '시작한 지 ${now.difference(topCountUp.date).inDays + 1}일째'
+                                    : '목표 설정 중');
+                            startStr = topCountDown != null
+                                ? '목표일: ${topCountDown.date.year}.${topCountDown.date.month.toString().padLeft(2, '0')}.${topCountDown.date.day.toString().padLeft(2, '0')}'
+                                : '나만의 시간 기록';
+                            badgeStr = '진행 중인 일정 ${countDownItems.length}개';
+                          }
+
+                          return UnifiedCategoryTopCard(
+                            categoryKey: _category.categoryKey,
+                            title: _category.name,
+                            symbol: _category.icon,
+                            coreDDayText: dDayStr,
+                            startDateText: startStr,
+                            reunionOrExtraBadge: badgeStr,
+                            onEditAvatar: () => _openCategorySpecificSettings(),
+                            onManageSection: () => _openCategorySpecificSettings(),
+                            manageSectionText: '설정 관리',
+                          );
+                        }
+
+                        return GestureDetector(
+                          onTap: _openCategorySpecificSettings,
+                          child: Container(
+                            width: double.infinity,
+                            height: 190,
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: singleColor ?? AppColors.protoCardBg,
+                              gradient: gradientColors != null ? LinearGradient(colors: gradientColors) : null,
+                              image: hasImage
+                                  ? DecorationImage(
+                                      image: bgConfig.imageUrl!.startsWith('http')
+                                          ? NetworkImage(bgConfig.imageUrl!) as ImageProvider
+                                          : AssetImage(bgConfig.imageUrl!),
+                                      fit: BoxFit.cover,
+                                      colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.15), BlendMode.darken),
+                                    )
+                                  : null,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: AppColors.protoCardBorder, width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: cardContent,
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                   ],
 
-                  // 구분선
-                  const Divider(height: 1, color: AppColors.protoCardBorder),
-                  const SizedBox(height: 24),
-
-                  // 3. [영역 A] 'N일째 리스트' (Count-up List)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.trending_up_rounded, size: 18, color: AppColors.protoHeading),
-                          const SizedBox(width: 6),
-                          Text(
-                            'N일째 리스트',
-                            style: AppTypography.cardLabel.copyWith(
-                              color: AppColors.protoHeading,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (countUpItems.isNotEmpty)
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _customCountUpOrder = List.from(countUpItems);
-                              _isReorderingMode = true;
-                            });
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 0),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            '편집',
-                            style: TextStyle(color: Color(0xFF007AFF), fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  if (countUpItems.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE5E5EA)),
-                      ),
-                      child: const Text('등록된 N일째 항목이 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                    )
-                  else
-                    for (final item in _customCountUpOrder)
-                      _buildCountUpCard(
-                        item: item,
-                        pet: _findPetForItem(item, petProfiles),
-                        onTap: () => showAddEventBottomSheet(
-                          context,
-                          categoryKey: _category.categoryKey,
-                          existingItem: item,
-                        ),
-                      ),
-
-                  const SizedBox(height: 28),
-
-                  // 4. [영역 B] '세부 D-Day 리스트' (Countdown List)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            const Icon(Icons.event_note_rounded, size: 18, color: AppColors.protoHeading),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                '세부 D-Day 리스트',
-                                style: AppTypography.cardLabel.copyWith(
-                                  color: AppColors.protoHeading,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '총 ${countDownItems.length}개',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  if (countDownItems.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 28),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE5E5EA)),
-                      ),
-                      child: const Column(
-                        children: [
-                          Icon(Icons.event_available_rounded, size: 28, color: Colors.grey),
-                          SizedBox(height: 6),
-                          Text('예정된 D-Day 일정이 없어요', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                        ],
-                      ),
-                    )
-                  else
-                    for (final item in countDownItems) ...[
-                      _buildCountDownCard(
-                        item: item,
-                        pet: _findPetForItem(item, petProfiles),
-                        onTap: () => showAddEventBottomSheet(
-                          context,
-                          categoryKey: _category.categoryKey,
-                          existingItem: item,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                  if (_category.categoryKey != 'baby') ...[
+                    // 구분선
+                    const Divider(height: 1, color: AppColors.protoCardBorder),
+                    const SizedBox(height: 24),
+                    _buildCountUpSection(countUpItems, petProfiles),
+                    const SizedBox(height: 28),
+                    _buildCountDownSection(countDownItems, petProfiles),
+                  ],
                 ],
               ),
             ),
@@ -1616,6 +2146,179 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
     );
   }
 
+  Widget _buildBabySectionContent(
+    String secKey,
+    List<PlanItem> countUpItems,
+    List<PlanItem> countDownItems,
+    List<PetProfile> petProfiles,
+  ) {
+    switch (secKey) {
+      case 'careQuickBar':
+        return BabyCareQuickBarWidget(
+          profile: _getBabyProfile(),
+          onLogQuickCare: _handleQuickCareLog,
+          onLogDetailedCare: _handleDetailedCareLog,
+          onOpenCareHistory: _handleOpenCareHistory,
+        );
+      case 'vaccineTimeline':
+        return BabyVaccineTimelineWidget(
+          profile: _getBabyProfile(),
+          onToggleVaccine: _handleToggleVaccine,
+          onUpdateVaccine: (v) {},
+        );
+      case 'healthCheckup':
+        return BabyHealthCheckupWidget(
+          profile: _getBabyProfile(),
+          onToggleCheckup: _handleToggleCheckup,
+          onOpenAddGrowthRecord: _handleOpenAddGrowthRecord,
+        );
+      case 'growthRecords':
+        return BabyGrowthRecordsWidget(
+          profile: _getBabyProfile(),
+          onOpenAddGrowthRecord: _handleOpenAddGrowthRecord,
+          onEditGrowthRecord: _handleOpenEditGrowthRecord,
+        );
+      case 'countUpList':
+        return _buildCountUpSection(countUpItems, petProfiles);
+      case 'dDayList':
+        return _buildCountDownSection(countDownItems, petProfiles);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildCountUpSection(List<PlanItem> countUpItems, List<PetProfile> petProfiles) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.trending_up_rounded, size: 18, color: AppColors.protoHeading),
+                const SizedBox(width: 6),
+                Text(
+                  'N일째 리스트',
+                  style: AppTypography.cardLabel.copyWith(
+                    color: AppColors.protoHeading,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            if (countUpItems.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _customCountUpOrder = List.from(countUpItems);
+                    _isReorderingMode = true;
+                  });
+                },
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  '편집',
+                  style: TextStyle(color: Color(0xFF007AFF), fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (countUpItems.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE5E5EA)),
+            ),
+            child: const Text('등록된 N일째 항목이 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+          )
+        else
+          for (final item in _customCountUpOrder)
+            _buildCountUpCard(
+              item: item,
+              pet: _findPetForItem(item, petProfiles),
+              onTap: () => showAddEventBottomSheet(
+                context,
+                categoryKey: _category.categoryKey,
+                existingItem: item,
+              ),
+            ),
+      ],
+    );
+  }
+
+  Widget _buildCountDownSection(List<PlanItem> countDownItems, List<PetProfile> petProfiles) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.event_note_rounded, size: 18, color: AppColors.protoHeading),
+                const SizedBox(width: 6),
+                Text(
+                  '세부 D-Day 리스트',
+                  style: AppTypography.cardLabel.copyWith(
+                    color: AppColors.protoHeading,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              '총 ${countDownItems.length}개',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (countDownItems.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 28),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE5E5EA)),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.event_available_rounded, size: 28, color: Colors.grey),
+                SizedBox(height: 6),
+                Text('예정된 D-Day 일정이 없어요', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              ],
+            ),
+          )
+        else
+          for (final item in countDownItems) ...[
+            _buildCountDownCard(
+              item: item,
+              pet: _findPetForItem(item, petProfiles),
+              onTap: () => showAddEventBottomSheet(
+                context,
+                categoryKey: _category.categoryKey,
+                existingItem: item,
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+      ],
+    );
+  }
+
   Widget _buildCountUpCard({
     required PlanItem item,
     PetProfile? pet,
@@ -1743,8 +2446,33 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   }) {
     String dDayLabel = _calculateDDayLabel(item.date);
     DateTime displayDate = item.date;
+    String? countdownSubText;
 
-    if ((_category.categoryKey == 'pet' || _category.categoryKey == 'fandom') &&
+    if (item.deadlineTime != null && !item.isAllDay) {
+      final now = DateTime.now();
+      final todayOnly = DateTime(now.year, now.month, now.day);
+      final targetDayOnly = DateTime(item.date.year, item.date.month, item.date.day);
+      final fullTargetTime = DateTime(
+        item.date.year,
+        item.date.month,
+        item.date.day,
+        item.deadlineTime!.hour,
+        item.deadlineTime!.minute,
+      );
+
+      if (fullTargetTime.isBefore(now)) {
+        dDayLabel = '시간 경과';
+      } else if (todayOnly.isAtSameMomentAs(targetDayOnly)) {
+        dDayLabel = 'D-Day';
+        final diff = fullTargetTime.difference(now);
+        final hours = diff.inHours.toString().padLeft(2, '0');
+        final mins = (diff.inMinutes % 60).toString().padLeft(2, '0');
+        countdownSubText = '$hours:$mins 남음';
+      } else {
+        final diffDays = targetDayOnly.difference(todayOnly).inDays;
+        dDayLabel = diffDays == 0 ? 'D-Day' : (diffDays > 0 ? 'D-$diffDays' : 'D+$diffDays');
+      }
+    } else if ((_category.categoryKey == 'pet' || _category.categoryKey == 'fandom') &&
         (item.title.contains('생일') || item.title.contains('데뷔') || item.repeat)) {
       final now = DateTime.now();
       final todayOnly = DateTime(now.year, now.month, now.day);
@@ -1778,6 +2506,13 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
     }
 
     final isPast = dDayLabel.startsWith('D+');
+
+    String dateText = _formatDate(displayDate);
+    if (item.deadlineTime != null && !item.isAllDay) {
+      final hh = item.deadlineTime!.hour.toString().padLeft(2, '0');
+      final mm = item.deadlineTime!.minute.toString().padLeft(2, '0');
+      dateText = '$dateText $hh:$mm';
+    }
 
     Widget? avatarWidget;
     if (_category.categoryKey == 'pet' && pet != null) {
@@ -1863,7 +2598,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    _formatDate(displayDate),
+                    dateText,
                     style: AppTypography.caption.copyWith(color: AppColors.protoSubtitle),
                   ),
                 ],
@@ -1873,16 +2608,37 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isPast ? const Color(0xFFFFEAEA) : const Color(0xFFF2F2F7),
+                color: isPast
+                    ? const Color(0xFFFFEAEA)
+                    : (countdownSubText != null ? const Color(0xFFEFF6FF) : const Color(0xFFF2F2F7)),
                 borderRadius: BorderRadius.circular(14),
+                border: countdownSubText != null ? Border.all(color: const Color(0xFF93C5FD), width: 1) : null,
               ),
-              child: Text(
-                dDayLabel,
-                style: TextStyle(
-                  color: isPast ? const Color(0xFFEF4444) : const Color(0xFF007AFF),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    dDayLabel,
+                    style: TextStyle(
+                      color: isPast
+                          ? const Color(0xFFEF4444)
+                          : (countdownSubText != null ? const Color(0xFF1D4ED8) : const Color(0xFF007AFF)),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (countdownSubText != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      countdownSubText,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
@@ -1966,14 +2722,11 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: friends.length,
-          // 폭 비례(childAspectRatio)면 좁은 폰에서 카드가 낮아져 내용이 넘친다 —
-          // 사진·여백(140)은 고정, 글자 부분(76 — 좁은 폰에서 날짜가 두 줄이 되는 경우 포함)은
-          // 폰의 글씨 크기 설정만큼 키운다.
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            mainAxisExtent: 140 + MediaQuery.textScalerOf(context).scale(76),
+            childAspectRatio: 0.88,
           ),
           itemBuilder: (context, index) {
             final friend = friends[index];
@@ -1985,6 +2738,22 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildWeddingBody() {
+    return const WeddingCategoryView();
+  }
+
+  Widget _buildTravelBody() {
+    return const TravelCategoryView();
+  }
+
+  Widget _buildHobbyBody() {
+    return const HobbyCategoryView();
+  }
+
+  Widget _buildGroupBody() {
+    return const GroupCategoryView();
   }
 
   Widget _buildExamBody() {
@@ -2016,11 +2785,8 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            // 좁은 폭(375 등)에서는 두 버튼이 한 줄에 안 들어가 넘쳤다 — 줄바꿈 허용.
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 10,
-              runSpacing: 8,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 OutlinedButton.icon(
                   onPressed: _openExamOfficialDbModal,
@@ -2033,6 +2799,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
+                const SizedBox(width: 10),
                 ElevatedButton.icon(
                   onPressed: () => _openAddExamModal(),
                   icon: const Icon(Icons.add, size: 18),
@@ -2056,37 +2823,29 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
       children: [
         // 상단 요약 & 빠른 액션 바
         Container(
-          // Wrap은 내용 폭만큼만 차지하므로, 버튼이 오른쪽 끝에 붙도록 가로를 꽉 채운다.
-          width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          // 한 줄 유지 — 좁으면 제목과 개수 배지가 말줄임으로 줄어들고, 오른쪽 버튼은 그대로.
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Row(
+              Row(
                 children: [
                   const Icon(Icons.school_rounded, size: 18, color: Color(0xFF2563EB)),
                   const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      '시험 파이프라인 관리',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.cardLabel.copyWith(
-                        color: AppColors.protoHeading,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  Text(
+                    '시험 파이프라인 관리',
+                    style: AppTypography.cardLabel.copyWith(
+                      color: AppColors.protoHeading,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Flexible(
-                    child: Container(
+                  Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
@@ -2094,8 +2853,6 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                     ),
                     child: Text(
                       '총 ${exams.length}개',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -2103,13 +2860,9 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                       ),
                     ),
                   ),
-                  ),
                 ],
               ),
-              ),
-              const SizedBox(width: 8),
               Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   InkWell(
                     onTap: _openExamOfficialDbModal,

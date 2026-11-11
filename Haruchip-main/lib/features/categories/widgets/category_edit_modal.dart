@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/category.dart';
+import 'skin_theme_card_container.dart';
 
 Future<CategoryModel?> showCategoryEditModal(
   BuildContext context, {
@@ -29,6 +30,7 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
   late TabController _tabController;
   late TextEditingController _nameController;
   late String _selectedIcon;
+  CategorySkinTheme? _skinTheme;
 
   // Typography
   late String _selectedFontFamily;
@@ -79,22 +81,26 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
   ];
 
   static const List<Color> _solidColorPresets = [
+    Color(0xFFFF8DA1), // 연핑크 (Pastel Pink)
+    Color(0xFFC084FC), // 연보라 (Pastel Purple)
+    Color(0xFFFBBF24), // 파스텔 옐로우 (Pastel Yellow)
+    Color(0xFFFDE047), // 소프트 옐로우 (Soft Warm Yellow)
+    Color(0xFFFB923C), // 파스텔 피치/오렌지 (Pastel Peach)
+    Color(0xFF34D399), // 파스텔 에메랄드 그린 (Pastel Emerald)
+    Color(0xFF6EE7B7), // 파스텔 민트/세이지 (Pastel Mint)
+    Color(0xFF818CF8), // 파스텔 인디고/블루 (Pastel Indigo)
+    Color(0xFF38BDF8), // 파스텔 스카이 블루 (Pastel Sky)
+    Color(0xFFFDA4AF), // 로맨틱 로즈 (Romantic Rose)
+    Color(0xFFA3E635), // 파스텔 카키 (Pastel Khaki)
+    Color(0xFFF472B6), // 파스텔 핑크 (Pastel Pink)
+    Color(0xFF94A3B8), // 파스텔 슬레이트 (Pastel Slate)
     Color(0xFFFFF0F5), // Lavender Blush
     Color(0xFFFFFDF4), // Cream Yellow
     Color(0xFFF0F9FF), // Sky Light
     Color(0xFFF0FDF4), // Mint Light
     Color(0xFFFAF5FF), // Purple Light
-    Color(0xFFFEF2F2), // Rose Light
-    Color(0xFFFFF7ED), // Orange Light
     Color(0xFFF5F5F7), // Apple Gray
     Color(0xFF2B2D42), // Dark Navy
-    Color(0xFF1E1E24), // Charcoal
-    Color(0xFFE0A96D), // Warm Amber
-    Color(0xFFD4A373), // Warm Sand
-    Color(0xFFB7B7A4), // Sage Gray
-    Color(0xFFA5A58D), // Olive Muted
-    Color(0xFF6B705C), // Deep Olive
-    Color(0xFFEDF2F4), // Clean Light
   ];
 
   static const List<({String name, List<Color> colors})> _gradientPresets = [
@@ -151,7 +157,7 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
 
     _nameController = TextEditingController(text: widget.category.name);
     _selectedIcon = widget.category.icon;
@@ -177,6 +183,11 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
 
     _imageUrl = widget.category.background.imageUrl;
     _decorations = List.from(widget.category.background.decorations ?? []);
+
+    _skinTheme = widget.category.skinTheme ??
+        (widget.category.categoryKey == 'couple'
+            ? Y2kSkinPresets.cyberPink2000
+            : Y2kSkinPresets.windowsPixelClassic);
   }
 
   @override
@@ -328,16 +339,24 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
     List<String> hexColors;
     if (_selectedBgType == BackgroundType.gradient) {
       hexColors = _gradientColors.map((c) => colorToHex(c)).toList();
+    } else if (_skinTheme != null) {
+      hexColors = [_skinTheme!.backgroundColor];
     } else {
       hexColors = [colorToHex(_selectedSingleColor)];
     }
 
+    final currentMeta = Map<String, dynamic>.from(widget.category.metadata ?? {});
+    if (_skinTheme != null) {
+      currentMeta['skinTheme'] = _skinTheme!.toJson();
+    }
+
     final updatedCategory = widget.category.copyWith(
       name: name.isEmpty ? widget.category.name : name,
-      icon: _selectedIcon,
+      icon: _skinTheme?.accentEmoji.isNotEmpty == true ? _skinTheme!.accentEmoji : _selectedIcon,
+      metadata: currentMeta,
       typography: TypographyConfig(
         fontFamily: _selectedFontFamily,
-        textColor: colorToHex(_selectedTextColor),
+        textColor: _skinTheme != null ? _skinTheme!.textColor : colorToHex(_selectedTextColor),
         fontSize: _fontSize,
         opacity: _opacity,
         position: _textPosition,
@@ -440,10 +459,11 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
               unselectedLabelColor: const Color(0xFF8E8E93),
               labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               tabs: const [
+                Tab(text: '스킨(리모콘)'),
                 Tab(text: '기본 정보'),
                 Tab(text: '텍스트'),
                 Tab(text: '배경'),
-                Tab(text: '스티커/데코'),
+                Tab(text: '스티커'),
               ],
             ),
           ),
@@ -455,6 +475,7 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
             child: TabBarView(
               controller: _tabController,
               children: [
+                _buildSkinThemeTab(),
                 _buildBasicInfoTab(),
                 _buildTextCustomTab(),
                 _buildBackgroundTab(),
@@ -489,7 +510,79 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardWidth = constraints.maxWidth;
-        final cardHeight = 200.0;
+        const cardHeight = 200.0;
+
+        final activeTextColor = _skinTheme != null
+            ? colorFromHex(_skinTheme!.textColor)
+            : _selectedTextColor;
+
+        final cardContent = Stack(
+          children: [
+            // Main text block positioned according to _textPosition
+            Align(
+              alignment: _textPosition.alignment,
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Opacity(
+                  opacity: _opacity,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: switch (_textPosition) {
+                      TextPositionPreset.topLeft || TextPositionPreset.bottomLeft => CrossAxisAlignment.start,
+                      TextPositionPreset.topRight || TextPositionPreset.bottomRight => CrossAxisAlignment.end,
+                      _ => CrossAxisAlignment.center,
+                    },
+                    children: [
+                      Text(
+                        '${_selectedIcon.isNotEmpty ? _selectedIcon : '📌'} ${_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : '카테고리'}',
+                        style: TextStyle(
+                          fontFamily: _selectedFontFamily,
+                          fontSize: _fontSize,
+                          fontWeight: FontWeight.w800,
+                          color: activeTextColor,
+                          shadows: isImage || isGradient
+                              ? [Shadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4)]
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '700일째 · 2024.12.24 ~ ing',
+                        style: TextStyle(
+                          fontFamily: _selectedFontFamily,
+                          fontSize: (_fontSize * 0.75).clamp(10.0, 20.0),
+                          fontWeight: FontWeight.w600,
+                          color: activeTextColor.withValues(alpha: 0.85),
+                          shadows: isImage || isGradient
+                              ? [Shadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 3)]
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Movable / Resizable Stickers
+            for (int i = 0; i < _decorations.length; i++)
+              _buildDraggableSticker(
+                _decorations[i],
+                cardWidth,
+                cardHeight,
+                i,
+              ),
+          ],
+        );
+
+        if (_skinTheme != null) {
+          return SkinThemeCardContainer(
+            theme: _skinTheme!,
+            width: cardWidth,
+            height: cardHeight,
+            child: cardContent,
+          );
+        }
 
         return Container(
           width: cardWidth,
@@ -509,64 +602,7 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              // Main text block positioned according to _textPosition
-              Align(
-                alignment: _textPosition.alignment,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Opacity(
-                    opacity: _opacity,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: switch (_textPosition) {
-                        TextPositionPreset.topLeft || TextPositionPreset.bottomLeft => CrossAxisAlignment.start,
-                        TextPositionPreset.topRight || TextPositionPreset.bottomRight => CrossAxisAlignment.end,
-                        _ => CrossAxisAlignment.center,
-                      },
-                      children: [
-                        Text(
-                          '${_selectedIcon.isNotEmpty ? _selectedIcon : '📌'} ${_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : '카테고리'}',
-                          style: TextStyle(
-                            fontFamily: _selectedFontFamily,
-                            fontSize: _fontSize,
-                            fontWeight: FontWeight.w800,
-                            color: _selectedTextColor,
-                            shadows: isImage || isGradient
-                                ? [Shadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4)]
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '700일째 · 2024.12.24 ~ ing',
-                          style: TextStyle(
-                            fontFamily: _selectedFontFamily,
-                            fontSize: (_fontSize * 0.75).clamp(10.0, 20.0),
-                            fontWeight: FontWeight.w600,
-                            color: _selectedTextColor.withValues(alpha: 0.85),
-                            shadows: isImage || isGradient
-                                ? [Shadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 3)]
-                                : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Movable / Resizable Stickers
-              for (int i = 0; i < _decorations.length; i++)
-                _buildDraggableSticker(
-                  _decorations[i],
-                  cardWidth,
-                  cardHeight,
-                  i,
-                ),
-            ],
-          ),
+          child: cardContent,
         );
       },
     );
@@ -929,28 +965,57 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFE5E5EA)),
               ),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: _solidColorPresets.map((c) {
-                  final isSelected = _selectedSingleColor == c;
-                  return InkWell(
-                    onTap: () => setState(() => _selectedSingleColor = c),
-                    borderRadius: BorderRadius.circular(18),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: c,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isSelected ? const Color(0xFF007AFF) : const Color(0xFFD1D1D6),
-                          width: isSelected ? 3 : 1,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: _solidColorPresets.map((c) {
+                      final isSelected = _selectedSingleColor == c;
+                      return InkWell(
+                        onTap: () => setState(() => _selectedSingleColor = c),
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: c,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF007AFF) : const Color(0xFFD1D1D6),
+                              width: isSelected ? 3 : 1,
+                            ),
+                          ),
                         ),
-                      ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  );
-                }).toList(),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 16, color: Color(0xFF2563EB)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '이 카테고리 색상은 캘린더 일정 표시에도 동일하게 적용됩니다',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF1E40AF),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1195,6 +1260,464 @@ class _CategoryEditModalState extends State<CategoryEditModal> with SingleTicker
             }).toList(),
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _buildSkinThemeTab() {
+    final theme = _skinTheme ?? Y2kSkinPresets.cyberPink2000;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // 1. Title Banner
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF7ED),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFFFEDD5)),
+          ),
+          child: Row(
+            children: [
+              const Text('🕹️', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Y2K 블로그 리모콘 스킨 시스템',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF9A3412),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      '원터치 큐레이션 프리셋 및 나만의 패턴/테두리를 커스텀하세요.',
+                      style: TextStyle(fontSize: 11.5, color: Color(0xFFC2410C)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // 2. Curated Default Presets
+        _buildPanelSection(
+          title: '💖 Y2K 큐레이션 프리셋 (원터치 적용)',
+          child: SizedBox(
+            height: 108,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: Y2kSkinPresets.all.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final preset = Y2kSkinPresets.all[index];
+                final isSelected = theme.id == preset.id;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _skinTheme = preset;
+                      _selectedIcon = preset.accentEmoji;
+                      _selectedSingleColor = colorFromHex(preset.backgroundColor);
+                      _selectedTextColor = colorFromHex(preset.textColor);
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 120,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorFromHex(preset.backgroundColor),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFF007AFF) : colorFromHex(preset.borderColor),
+                        width: isSelected ? 2.5 : 1.2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isSelected ? 0.12 : 0.04),
+                          blurRadius: isSelected ? 8 : 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(preset.accentEmoji, style: const TextStyle(fontSize: 20)),
+                            if (isSelected)
+                              Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF007AFF),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.check, size: 12, color: Colors.white),
+                              ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              preset.name,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: colorFromHex(preset.textColor),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${preset.patternTypeEnum.labelKo} · ${preset.borderStyleEnum.labelKo}',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                color: colorFromHex(preset.textColor).withValues(alpha: 0.8),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // 3. Background Color
+        _buildPanelSection(
+          title: '🎨 카드 배경색',
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              '#FFE8F0', // 사이버 핑크
+              '#C5CBD9', // 윈도우 그레이/블루
+              '#FFF9E6', // 밀크 옐로우
+              '#E0F7F6', // 민트 소다
+              '#F8FAFC', // 클린 화이트
+              '#FFF0F5', // 라벤더 블러시
+              '#FAF5FF', // 파스텔 퍼플
+              '#E0F2FE', // 스카이 라이트
+              '#FEF2F2', // 로즈 라이트
+              '#FFF7ED', // 피치 오렌지
+              '#1E1E24', // Y2K 챠콜
+            ].map((hex) {
+              final isSelected = theme.backgroundColor.toUpperCase() == hex.toUpperCase();
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _skinTheme = theme.copyWith(backgroundColor: hex);
+                    _selectedSingleColor = colorFromHex(hex);
+                  });
+                },
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: colorFromHex(hex),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF007AFF) : const Color(0xFFD1D1D6),
+                      width: isSelected ? 3.0 : 1.0,
+                    ),
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, size: 18, color: Color(0xFF007AFF))
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // 4. Pattern Type
+        _buildPanelSection(
+          title: '✨ 배경 패턴 유형',
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: SkinPatternType.values.map((p) {
+              final isSelected = theme.patternTypeEnum == p;
+              return ChoiceChip(
+                label: Text(p.labelKo),
+                selected: isSelected,
+                selectedColor: const Color(0xFFEFF6FF),
+                labelStyle: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? const Color(0xFF007AFF) : const Color(0xFF374151),
+                ),
+                side: BorderSide(
+                  color: isSelected ? const Color(0xFF007AFF) : const Color(0xFFE5E7EB),
+                ),
+                onSelected: (val) {
+                  if (val) {
+                    setState(() {
+                      _skinTheme = theme.copyWith(patternType: p.toJson());
+                    });
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // 5. Pattern Color (Independent from background)
+        _buildPanelSection(
+          title: '🎯 패턴 자체 색상 (배경과 분리 커스텀)',
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              '#FFFFFF', // 화이트
+              '#FF85A2', // 핑크
+              '#80CBC4', // 민트
+              '#E6D5AC', // 크림 베이지
+              '#94A3B8', // 슬레이트
+              '#8B5CF6', // 퍼플
+              '#F59E0B', // 앰버
+              '#000080', // 네이비
+              '#004D40', // 딥 민트
+              '#5D4037', // 브라운
+            ].map((hex) {
+              final isSelected = theme.patternColor.toUpperCase() == hex.toUpperCase();
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _skinTheme = theme.copyWith(patternColor: hex);
+                  });
+                },
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: colorFromHex(hex),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF007AFF) : const Color(0xFFD1D1D6),
+                      width: isSelected ? 3.0 : 1.0,
+                    ),
+                  ),
+                  child: isSelected
+                      ? Icon(
+                          Icons.check,
+                          size: 16,
+                          color: hex == '#FFFFFF' ? Colors.black : Colors.white,
+                        )
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // 6. Pattern Opacity Slider
+        _buildPanelSection(
+          title: '🌫️ 패턴 투명도 (${(theme.patternOpacity * 100).round()}%)',
+          child: Slider(
+            value: theme.patternOpacity,
+            min: 0.05,
+            max: 0.50,
+            divisions: 9,
+            activeColor: const Color(0xFF007AFF),
+            onChanged: (val) {
+              setState(() {
+                _skinTheme = theme.copyWith(patternOpacity: val);
+              });
+            },
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // 7. Border Style (Naver Blog Box Style)
+        _buildPanelSection(
+          title: '📦 테두리 스타일 (네이버 블로그 구성 박스)',
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: SkinBorderStyle.values.map((b) {
+              final isSelected = theme.borderStyleEnum == b;
+              return ChoiceChip(
+                label: Text(b.labelKo),
+                selected: isSelected,
+                selectedColor: const Color(0xFFEFF6FF),
+                labelStyle: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? const Color(0xFF007AFF) : const Color(0xFF374151),
+                ),
+                side: BorderSide(
+                  color: isSelected ? const Color(0xFF007AFF) : const Color(0xFFE5E7EB),
+                ),
+                onSelected: (val) {
+                  if (val) {
+                    setState(() {
+                      _skinTheme = theme.copyWith(
+                        borderStyle: b.toJson(),
+                        borderRadius: b == SkinBorderStyle.window98Bevel ? 0.0 : theme.borderRadius,
+                      );
+                    });
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // 8. Border Color
+        _buildPanelSection(
+          title: '🖌️ 테두리 선 색상',
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              '#FF85A2', // 핑크
+              '#808080', // 윈도우 그레이
+              '#8C6D52', // 브라운
+              '#00897B', // 딥 민트
+              '#000080', // 네이비
+              '#E2E8F0', // 연그레이
+              '#EC407A', // 핫핑크
+              '#7C3AED', // 바이올렛
+              '#2563EB', // 블루
+              '#059669', // 에메랄드
+            ].map((hex) {
+              final isSelected = theme.borderColor.toUpperCase() == hex.toUpperCase();
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _skinTheme = theme.copyWith(borderColor: hex);
+                  });
+                },
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: colorFromHex(hex),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF007AFF) : const Color(0xFFD1D1D6),
+                      width: isSelected ? 3.0 : 1.0,
+                    ),
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // 9. Border Width & Border Radius Sliders
+        Row(
+          children: [
+            Expanded(
+              child: _buildPanelSection(
+                title: '선 굵기 (${theme.borderWidth.toStringAsFixed(1)}px)',
+                child: Slider(
+                  value: theme.borderWidth,
+                  min: 0.5,
+                  max: 5.0,
+                  divisions: 9,
+                  activeColor: const Color(0xFF007AFF),
+                  onChanged: (val) {
+                    setState(() {
+                      _skinTheme = theme.copyWith(borderWidth: val);
+                    });
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildPanelSection(
+                title: '모서리 (${theme.borderRadius.round()}px)',
+                child: Slider(
+                  value: theme.borderRadius,
+                  min: 0.0,
+                  max: 24.0,
+                  divisions: 12,
+                  activeColor: const Color(0xFF007AFF),
+                  onChanged: (val) {
+                    setState(() {
+                      _skinTheme = theme.copyWith(borderRadius: val);
+                    });
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            '💡 0px: 레트로 직각 (윈도우98) · 16~24px: 소프트 둥근 모서리',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // 10. Accent Emoji
+        _buildPanelSection(
+          title: '🌟 대표 이모지 / 아이콘',
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              '💖', '💻', '📖', '🫧', '✨', '🎀', '🧸', '🌸', '🍓', '💍', '🍀', '🎮', '☕', '🎂', '💌'
+            ].map((emoji) {
+              final isSelected = theme.accentEmoji == emoji;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _skinTheme = theme.copyWith(accentEmoji: emoji);
+                    _selectedIcon = emoji;
+                  });
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF007AFF) : const Color(0xFFE5E7EB),
+                      width: isSelected ? 2.0 : 1.0,
+                    ),
+                  ),
+                  child: Text(emoji, style: const TextStyle(fontSize: 22)),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 32),
       ],
     );
   }

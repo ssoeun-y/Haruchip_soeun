@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../design_system/colors.dart';
+import 'common_date_time_picker.dart';
 
 Future<DateTime?> showHaruDatePicker(
   BuildContext context, {
@@ -7,60 +8,11 @@ Future<DateTime?> showHaruDatePicker(
   DateTime? firstDate,
   DateTime? lastDate,
 }) async {
-  DateTime selectedDate = initialDate;
-  final fDate = firstDate ?? DateTime(1900);
-  final lDate = lastDate ?? DateTime(2100);
-
-  return showDialog<DateTime>(
-    context: context,
-    builder: (ctx) {
-      return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                HaruCalendarPicker(
-                  initialDate: selectedDate,
-                  firstDate: fDate,
-                  lastDate: lDate,
-                  onDateChanged: (d) {
-                    selectedDate = d;
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, null),
-                      child: const Text('취소', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF007AFF),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(ctx, selectedDate);
-                      },
-                      child: const Text('확인', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    },
+  return showCommonDatePickerModal(
+    context,
+    initialDate: initialDate,
+    firstDate: firstDate,
+    lastDate: lastDate,
   );
 }
 

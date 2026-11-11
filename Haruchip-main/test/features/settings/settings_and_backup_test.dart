@@ -33,6 +33,13 @@ void main() {
 
       final rruleNone = service.buildRRule(RepeatConfig.none);
       expect(rruleNone, isNull);
+
+      // Pastel color to Google Calendar ColorId Euclidean distance mapping test
+      expect(service.mapHexToGoogleColorId('#FF8DA1'), equals('4')); // Flamingo for pastel pink
+      expect(service.mapHexToGoogleColorId('#C084FC'), equals('1')); // Lavender for pastel lavender/purple
+      expect(service.mapHexToGoogleColorId('#FBBF24'), equals('5')); // Banana for pastel yellow
+      expect(service.mapCategoryToGoogleColorId('couple'), equals('4'));
+      expect(service.mapCategoryToGoogleColorId('custom', colorHex: '#38BDF8'), equals('7')); // Peacock for sky blue
     });
 
     test('PlanItem JSON serialization includes reminder and round-trips accurately', () {

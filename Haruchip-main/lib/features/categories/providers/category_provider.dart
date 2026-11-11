@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../design_system/colors.dart';
 import '../../../services/storage/local_store.dart';
+import '../data/category_types.dart';
 import '../models/category.dart';
 
 /// 사용자가 만든 카테고리 인스턴스 전체 목록 및 순서/숨김 상태 관리
@@ -81,7 +81,7 @@ class CategoryListNotifier extends Notifier<List<Category>> {
           categoryKey: type.key,
           name: type.labelKo,
           emoji: type.emoji,
-          colorHex: colorToHex(AppColors.kFreeColorPresets.first),
+          colorHex: getCategoryColorHex(type.key),
           createdAt: DateTime.now(),
         ),
       );

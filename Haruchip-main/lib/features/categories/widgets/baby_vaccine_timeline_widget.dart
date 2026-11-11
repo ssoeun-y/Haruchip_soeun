@@ -23,7 +23,7 @@ class BabyVaccineTimelineWidget extends StatefulWidget {
 }
 
 class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
-  int _tabIndex = 0; // 0: 전체, 1: 0~6개월, 2: 12~36개월, 3: 만 4~12세, 4: 미접종(대기)
+  int _tabIndex = 0; // 0: 미접종, 1: 완료, 2: 전체, 3: 0~6개월, 4: 12~36개월, 5: 만 4~12세
   static const _controller = BabyCategoryController();
 
   List<VaccineDose> get _effectiveDoses {
@@ -32,22 +32,11 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
     return kDefaultVaccineDoses;
   }
 
-  List<VaccineDose> get _filteredDoses {
-    final all = _effectiveDoses;
-    return switch (_tabIndex) {
-      1 => all.where((d) => d.recommendedAgeMonths <= 6).toList(),
-      2 => all.where((d) => d.recommendedAgeMonths >= 12 && d.recommendedAgeMonths <= 36).toList(),
-      3 => all.where((d) => d.recommendedAgeMonths >= 48).toList(),
-      4 => all.where((d) => !d.isCompleted).toList(),
-      _ => all,
-    };
-  }
-
   String _formatDate(DateTime d) =>
       '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
 
   String _calculateDdayBadge(DateTime targetDate, bool isCompleted) {
-    if (isCompleted) return '접종완료';
+    if (isCompleted) return '접종 완료';
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final target = DateTime(targetDate.year, targetDate.month, targetDate.day);
@@ -63,8 +52,51 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
     final allDoses = _effectiveDoses;
     final completedCount = allDoses.where((d) => d.isCompleted).length;
     final totalCount = allDoses.length;
+    final uncompletedCount = totalCount - completedCount;
     final progress = totalCount > 0 ? (completedCount / totalCount) : 0.0;
-    final filtered = _filteredDoses;
+
+    // Filter by tab
+    List<VaccineDose> filtered;
+    switch (_tabIndex) {
+      case 0: // 미접종
+        filtered = allDoses.where((d) => !d.isCompleted).toList();
+        break;
+      case 1: // 완료
+        filtered = allDoses.where((d) => d.isCompleted).toList();
+        break;
+      case 2: // 전체
+        filtered = List.from(allDoses);
+        break;
+      case 3: // 0~6개월
+        filtered = allDoses.where((d) => d.recommendedAgeMonths <= 6).toList();
+        break;
+      case 4: // 12~36개월
+        filtered = allDoses.where((d) => d.recommendedAgeMonths >= 12 && d.recommendedAgeMonths <= 36).toList();
+        break;
+      case 5: // 만 4~12세
+        filtered = allDoses.where((d) => d.recommendedAgeMonths >= 48).toList();
+        break;
+      default:
+        filtered = List.from(allDoses);
+    }
+
+    // Sort: If showing mixed tabs (전체 or age tabs), keep uncompleted first, completed after
+    if (_tabIndex != 0 && _tabIndex != 1) {
+      filtered.sort((a, b) {
+        if (a.isCompleted != b.isCompleted) {
+          return a.isCompleted ? 1 : -1;
+        }
+        final dateA = _controller.calculateVaccineDoseTargetDate(widget.profile.birthDate, a);
+        final dateB = _controller.calculateVaccineDoseTargetDate(widget.profile.birthDate, b);
+        return dateA.compareTo(dateB);
+      });
+    } else if (_tabIndex == 0) {
+      filtered.sort((a, b) {
+        final dateA = _controller.calculateVaccineDoseTargetDate(widget.profile.birthDate, a);
+        final dateB = _controller.calculateVaccineDoseTargetDate(widget.profile.birthDate, b);
+        return dateA.compareTo(dateB);
+      });
+    }
 
     return Container(
       width: double.infinity,
@@ -141,20 +173,22 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
 
           const SizedBox(height: 14),
 
-          // 2. 필터 탭 (전체, 0~6개월, 12~36개월, 만 4~12세, 미접종)
+          // 2. 필터 탭 (미접종, 완료, 전체, 0~6개월, 12~36개월, 만 4~12세)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildTab(0, '전체 ($totalCount)'),
+                _buildTab(0, '미접종 ($uncompletedCount)'),
                 const SizedBox(width: 6),
-                _buildTab(1, '0~6개월'),
+                _buildTab(1, '접종 완료 ($completedCount)'),
                 const SizedBox(width: 6),
-                _buildTab(2, '12~36개월'),
+                _buildTab(2, '전체 ($totalCount)'),
                 const SizedBox(width: 6),
-                _buildTab(3, '만 4~12세'),
+                _buildTab(3, '0~6개월'),
                 const SizedBox(width: 6),
-                _buildTab(4, '미접종 (${totalCount - completedCount})'),
+                _buildTab(4, '12~36개월'),
+                const SizedBox(width: 6),
+                _buildTab(5, '만 4~12세'),
               ],
             ),
           ),
@@ -166,9 +200,11 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
             Container(
               padding: const EdgeInsets.all(24),
               alignment: Alignment.center,
-              child: const Text(
-                '해당 조건의 예방접종 항목이 없습니다.',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+              child: Text(
+                _tabIndex == 0
+                    ? '🎉 모든 권장 필수 예방접종을 완료했습니다!'
+                    : (_tabIndex == 1 ? '아직 접종 완료된 항목이 없습니다.' : '해당 조건의 예방접종 항목이 없습니다.'),
+                style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
               ),
             )
           else
@@ -179,9 +215,9 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final dose = filtered[index];
-                final targetDate = _controller.calculateVaccineTargetDate(
+                final targetDate = _controller.calculateVaccineDoseTargetDate(
                   widget.profile.birthDate,
-                  dose.recommendedAgeMonths,
+                  dose,
                 );
                 final badgeText = _calculateDdayBadge(targetDate, dose.isCompleted);
                 final isDdayOrPast = !dose.isCompleted && targetDate.isBefore(DateTime.now());
@@ -195,17 +231,17 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: dose.isCompleted
-                          ? const Color(0xFFE2E8F0)
+                          ? const Color(0xFFCBD5E1)
                           : (isDdayOrPast ? const Color(0xFFFDE68A) : const Color(0xFFF1F5F9)),
-                      width: 1,
+                      width: dose.isCompleted ? 1.2 : 1,
                     ),
                   ),
                   child: Row(
                     children: [
-                      // 체크박스
+                      // 체크박스 (완료/미접종 토글)
                       Checkbox(
                         value: dose.isCompleted,
-                        activeColor: const Color(0xFF0284C7),
+                        activeColor: const Color(0xFF059669),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                         onChanged: (_) => widget.onToggleVaccine(dose),
                       ),
@@ -220,13 +256,16 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
                               crossAxisAlignment: WrapCrossAlignment.center,
                               runSpacing: 2,
                               children: [
-                                Text(
-                                  dose.name,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: dose.isCompleted ? Colors.grey.shade600 : AppColors.protoHeading,
-                                    decoration: dose.isCompleted ? TextDecoration.lineThrough : null,
+                                Flexible(
+                                  child: Text(
+                                    dose.name,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: dose.isCompleted ? Colors.grey.shade600 : AppColors.protoHeading,
+                                      decoration: dose.isCompleted ? TextDecoration.lineThrough : null,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 const SizedBox(width: 6),
@@ -250,42 +289,96 @@ class _BabyVaccineTimelineWidgetState extends State<BabyVaccineTimelineWidget> {
                             const SizedBox(height: 3),
                             Text(
                               dose.isCompleted && dose.completedDate != null
-                                  ? '접종일: ${_formatDate(dose.completedDate!)}'
+                                  ? '접종일: ${_formatDate(dose.completedDate!)} (${dose.disease})'
                                   : '권장 예정일: ${_formatDate(targetDate)} (${dose.disease})',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: dose.isCompleted ? Colors.grey.shade500 : const Color(0xFF64748B),
                               ),
                             ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '출처: 질병관리청 국가표준 필수예방접종 가이드라인',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey.shade400,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
 
-                      // 디데이 뱃지
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: dose.isCompleted
-                              ? const Color(0xFFE2E8F0)
-                              : (isDdayOrPast ? const Color(0xFFFEF3C7) : const Color(0xFFE0F2FE)),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          badgeText,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: dose.isCompleted
-                                ? const Color(0xFF64748B)
-                                : (isDdayOrPast ? const Color(0xFFD97706) : const Color(0xFF0369A1)),
+                      // 완료 도장 그래픽 또는 디데이 뱃지
+                      if (dose.isCompleted)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFDF5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF10B981), width: 1.2),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF059669)),
+                              SizedBox(width: 3),
+                              Text(
+                                '접종 완료',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF059669),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDdayOrPast ? const Color(0xFFFEF3C7) : const Color(0xFFE0F2FE),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: isDdayOrPast ? const Color(0xFFD97706) : const Color(0xFF0369A1),
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 );
               },
             ),
+
+          const SizedBox(height: 12),
+          // 공식 안내 가이드라인 안내
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF64748B)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '출처: 질병관리청(KCDA) 예방접종도우미 표준 예방접종 일정표 기준',
+                    style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

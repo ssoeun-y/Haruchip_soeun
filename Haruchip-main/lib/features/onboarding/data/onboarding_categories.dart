@@ -51,6 +51,18 @@ const List<OnboardingCategory> kOnboardingCategories = [
     emoji: '📚',
   ),
   OnboardingCategory(
+    key: 'wedding',
+    labelKo: '결혼 준비',
+    group: CategoryGroup.emotional,
+    emoji: '💍',
+  ),
+  OnboardingCategory(
+    key: 'meeting',
+    labelKo: '모임',
+    group: CategoryGroup.practical,
+    emoji: '👥',
+  ),
+  OnboardingCategory(
     key: 'birthday',
     labelKo: '생일',
     group: CategoryGroup.emotional,
@@ -79,6 +91,18 @@ const List<OnboardingCategory> kOnboardingCategories = [
     labelKo: '루틴 / 주간 계획표',
     group: CategoryGroup.practical,
     emoji: '⏱️',
+  ),
+  OnboardingCategory(
+    key: 'hobby',
+    labelKo: '취미',
+    group: CategoryGroup.emotional,
+    emoji: '🎨',
+  ),
+  OnboardingCategory(
+    key: 'travel',
+    labelKo: '여행',
+    group: CategoryGroup.emotional,
+    emoji: '✈️',
   ),
   OnboardingCategory(
     key: 'custom',

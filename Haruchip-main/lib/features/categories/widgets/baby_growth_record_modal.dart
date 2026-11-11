@@ -4,23 +4,31 @@ import '../../../design_system/typography.dart';
 import '../../shared/widgets/haru_calendar_picker.dart';
 import '../models/baby_profile.dart';
 
-/// 아기 신체 계측 기록 추가 모달
+/// 아기 신체 계측 기록 추가 / 수정 / 삭제 모달
 Future<GrowthRecord?> showBabyGrowthRecordModal(
   BuildContext context, {
   GrowthRecord? existingRecord,
+  VoidCallback? onDelete,
 }) {
   return showModalBottomSheet<GrowthRecord>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => _BabyGrowthRecordSheet(existingRecord: existingRecord),
+    builder: (ctx) => _BabyGrowthRecordSheet(
+      existingRecord: existingRecord,
+      onDelete: onDelete,
+    ),
   );
 }
 
 class _BabyGrowthRecordSheet extends StatefulWidget {
-  const _BabyGrowthRecordSheet({this.existingRecord});
+  const _BabyGrowthRecordSheet({
+    this.existingRecord,
+    this.onDelete,
+  });
 
   final GrowthRecord? existingRecord;
+  final VoidCallback? onDelete;
 
   @override
   State<_BabyGrowthRecordSheet> createState() => _BabyGrowthRecordSheetState();
@@ -81,9 +89,50 @@ class _BabyGrowthRecordSheetState extends State<_BabyGrowthRecordSheet> {
     Navigator.of(context).pop(record);
   }
 
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24),
+            SizedBox(width: 8),
+            Text('성장 기록 삭제', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          '${_formatDate(_date)} 신체 성장 기록을 삭제하시겠습니까?\n삭제된 기록은 복구할 수 없습니다.',
+          style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('취소', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('삭제', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      widget.onDelete?.call();
+      Navigator.of(context).pop(null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
+    final isEditing = widget.existingRecord != null;
 
     return Container(
       height: mediaQuery.size.height * 0.78,
@@ -109,13 +158,9 @@ class _BabyGrowthRecordSheetState extends State<_BabyGrowthRecordSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Text(
-                  '📏 신체 계측 성장 기록',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.heading2.copyWith(fontSize: 18),
-                ),
+              Text(
+                isEditing ? '📏 신체 성장 기록 수정' : '📏 신체 계측 성장 기록',
+                style: AppTypography.heading2.copyWith(fontSize: 18),
               ),
               IconButton(
                 icon: const Icon(Icons.close_rounded),
@@ -257,16 +302,47 @@ class _BabyGrowthRecordSheetState extends State<_BabyGrowthRecordSheet> {
               ],
             ),
           ),
-          ElevatedButton(
-            onPressed: _save,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD97706),
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          if (isEditing)
+            Row(
+              children: [
+                if (widget.onDelete != null) ...[
+                  OutlinedButton.icon(
+                    onPressed: _confirmDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 18),
+                    label: const Text('기록 삭제', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      side: const BorderSide(color: Color(0xFFFCA5A5)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD97706),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('수정 완료', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            )
+          else
+            ElevatedButton(
+              onPressed: _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD97706),
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('기록 저장하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
-            child: const Text('기록 저장하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
         ],
       ),
     );

@@ -23,6 +23,9 @@ const Map<String, String> ddayTitlePlaceholder = {
   'routine': '예: 매주 월/수 필라테스, 매일 독서 30분',
   'solo': '예: 나홀로 제주 여행, 바디프로필',
   'fandom': '예: 최애 컴백일, 콘서트 티켓팅, 팬미팅',
+  'hobby': '예: 기타 연습, 러닝 크루, 독서',
+  'travel': '예: 오사카 여행, 제주도 한 달 살기',
+  'wedding': '예: 웨딩홀 투어, 스튜디오 촬영, 본식',
 };
 
 /// 전체 카테고리 타입 목록.
@@ -49,4 +52,24 @@ OnboardingCategory? categoryTypeOf(String categoryKey) {
     if (type.key == categoryKey) return type;
   }
   return null;
+}
+
+/// 카테고리별 고유 파스텔 Hex 색상 매핑 (빨간색 고정 버그 방지 및 실시간 동기화)
+String getCategoryColorHex(String categoryKey) {
+  return switch (categoryKey) {
+    'couple' => '#FF8DA1', // 연핑크 (Pastel Pink)
+    'solo' => '#C084FC', // 연보라 (Pastel Purple)
+    'fandom' => '#FBBF24', // 파스텔 옐로우 (Pastel Yellow)
+    'group' => '#34D399', // 파스텔 에메랄드 그린 (Pastel Emerald Green)
+    'exam' => '#818CF8', // 파스텔 인디고/블루 (Pastel Indigo)
+    'military' => '#A3E635', // 파스텔 카키/라임 (Pastel Khaki)
+    'birthday' => '#F472B6', // 파스텔 로즈핑크 (Pastel Rose Pink)
+    'baby' => '#FDE047', // 소프트 옐로우 (Soft Warm Yellow)
+    'pet' => '#FB923C', // 파스텔 피치/오렌지 (Pastel Peach)
+    'wedding' => '#FDA4AF', // 로맨틱 로즈/샴페인 (Romantic Rose Champagne)
+    'hobby' => '#6EE7B7', // 파스텔 세이지/민트 (Pastel Sage/Mint)
+    'travel' => '#38BDF8', // 파스텔 스카이 블루 (Pastel Sky Blue)
+    'plan' => '#60A5FA', // 파스텔 블루 (Pastel Blue)
+    _ => '#60A5FA',
+  };
 }

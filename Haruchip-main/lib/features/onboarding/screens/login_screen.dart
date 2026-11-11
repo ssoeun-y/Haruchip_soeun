@@ -122,14 +122,29 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.canPop(context);
+
     return Scaffold(
       backgroundColor: AppColors.protoBackground,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (canPop) ...[
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 20,
+                    color: AppColors.protoHeading,
+                  ),
+                  onPressed: () => Navigator.maybePop(context),
+                ),
+                const SizedBox(height: 16),
+              ],
               Text(
                 '하루칩에\n로그인해주세요',
                 style: AppTypography.heading1.copyWith(
@@ -160,6 +175,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 icon: Icons.g_mobiledata_rounded,
                 label: _isGoogleLoading ? '구글 로그인 중...' : '구글로 시작하기',
                 onPressed: _isAnyLoading ? null : _handleGoogleLogin,
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: TextButton(
+                  onPressed: _isAnyLoading ? null : _goToNextStep,
+                  child: Text(
+                    '로그인 없이 둘러보기',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.protoSubtitle,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

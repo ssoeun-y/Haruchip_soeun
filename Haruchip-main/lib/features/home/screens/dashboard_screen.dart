@@ -11,12 +11,10 @@ import '../../couple/providers/couple_provider.dart';
 import '../../onboarding/providers/dashboard_view_mode_provider.dart';
 import '../../plan/models/plan_item.dart';
 import '../../plan/providers/plan_provider.dart';
-import '../../settings/screens/settings_screen.dart';
 import '../widgets/add_category_dashboard_card.dart';
 import '../widgets/add_category_dashboard_modal.dart';
 import '../widgets/category_summary_dashboard_card.dart';
 import '../widgets/dashboard_view_mode_toggle.dart';
-import 'trash_bin_screen.dart';
 
 /// 메인 셸의 "대시보드" 탭 — 카테고리별 핵심 디데이 요약 뷰 (Summary Hub)
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -28,6 +26,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _isEditMode = false;
+  String? _selectedCategoryFilter;
 
   void _navigateToCategoryDetail(CategoryModel category) {
     if (category.categoryKey == 'couple') {
@@ -155,6 +154,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final visibleCategories = ref.watch(visibleCategoriesProvider);
     final allPlanItems = ref.watch(planListProvider);
 
+    final displayedCategories = (_selectedCategoryFilter == null || _selectedCategoryFilter == 'all')
+        ? visibleCategories
+        : visibleCategories.where((c) => c.categoryKey == _selectedCategoryFilter).toList();
+
     // 임박 D-Day 필터링 (가장 빠른 3개 일정)
     final upcomingItems = allPlanItems
         .where((i) => i.displayMode != DdayDisplayMode.daysCount)
@@ -165,66 +168,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       backgroundColor: AppColors.protoBackground,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. 심플·감성 대시보드 헤더
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '하루칩',
-                        style: AppTypography.heading1.copyWith(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.protoHeading,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '한눈에 보는 나의 디데이 요약',
-                        style: AppTypography.caption.copyWith(
-                          fontSize: 13,
-                          color: AppColors.protoSubtitle,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, size: 22, color: AppColors.protoHeading),
-                        tooltip: '휴지통 (30일 복구 보존)',
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const TrashBinScreen()),
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.settings_outlined, size: 22, color: AppColors.protoHeading),
-                        tooltip: '환경 설정 및 백업',
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // 2. 임박한 주요 일정 브리핑 바 (간결한 상단 칩)
+              // 1. 임박한 주요 일정 브리핑 바 (간결한 상단 칩)
               if (upcomingItems.isNotEmpty) ...[
                 Container(
                   width: double.infinity,
@@ -299,16 +247,76 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const SizedBox(height: 16),
               ],
 
+              // 2-1. 상단 가로 카테고리 칩 필터 바 ([전체], [취미], [여행], [커플] 등 테마 컬러 1:1 연동)
+              Builder(builder: (context) {
+                final filterItems = <({String key, String label, String icon})>[
+                  (key: 'all', label: '전체', icon: '✨'),
+                ];
+                final addedKeys = <String>{'all'};
+
+                for (final cat in visibleCategories) {
+                  if (addedKeys.add(cat.categoryKey)) {
+                    filterItems.add((key: cat.categoryKey, label: cat.name, icon: cat.icon));
+                  }
+                }
+                if (addedKeys.add('hobby')) {
+                  filterItems.add((key: 'hobby', label: '취미', icon: '🎨'));
+                }
+                if (addedKeys.add('travel')) {
+                  filterItems.add((key: 'travel', label: '여행', icon: '✈️'));
+                }
+                if (addedKeys.add('wedding')) {
+                  filterItems.add((key: 'wedding', label: '결혼', icon: '💍'));
+                }
+
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      for (final item in filterItems) ...[
+                        Builder(builder: (context) {
+                          final isSelected = (_selectedCategoryFilter == null && item.key == 'all') ||
+                              _selectedCategoryFilter == item.key;
+                          final palette = item.key == 'all'
+                              ? const CategoryThemePalette(
+                                  bg: Color(0xFFFEFCE8),
+                                  border: Color(0xFFFDE047),
+                                  chipBg: Color(0xFFFDE047),
+                                  primary: Color(0xFF854D0E),
+                                  text: Color(0xFF854D0E),
+                                )
+                              : CategoryThemePalette.forCategoryKey(item.key);
+
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: _buildFilterChip(
+                              label: item.label,
+                              icon: item.icon,
+                              isSelected: isSelected,
+                              onTap: () {
+                                setState(() {
+                                  if (item.key == 'all' || _selectedCategoryFilter == item.key) {
+                                    _selectedCategoryFilter = null;
+                                  } else {
+                                    _selectedCategoryFilter = item.key;
+                                  }
+                                });
+                              },
+                              palette: palette,
+                            ),
+                          );
+                        }),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 16),
+
               // 3. 뷰 모드 토글 & 순서 편집 버튼 툴바
-              // 좁은 폰에서는 [순서 편집] 버튼이 다음 줄로. (Wrap은 내용 폭만큼만 차지하므로
-              // 넓을 때 버튼이 오른쪽 끝에 붙도록 가로를 채운다)
-              SizedBox(
-                width: double.infinity,
-                child: Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 0,
-                runSpacing: 8,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   DashboardViewModeToggle(
                     selectedKey: viewMode,
@@ -345,7 +353,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ],
               ),
-              ),
               const SizedBox(height: 16),
 
               // 4. 카테고리별 표준 요약 카드 그리드/리스트
@@ -359,14 +366,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     crossAxisSpacing: 12,
                     childAspectRatio: 0.85,
                   ),
-                  itemCount: visibleCategories.length + 1,
+                  itemCount: displayedCategories.length + 1,
                   itemBuilder: (context, index) {
-                    if (index == visibleCategories.length) {
+                    if (index == displayedCategories.length) {
                       return AddCategoryDashboardCard(
                         onTap: () => showAddCategoryDashboardModal(context),
                       );
                     }
-                    final category = visibleCategories[index];
+                    final category = displayedCategories[index];
                     final items = ref.watch(planItemsByCategoryProvider(category.categoryKey));
                     final countUpItems = items.where((i) => i.displayMode == DdayDisplayMode.daysCount).toList();
                     final countDownItems = items.where((i) => i.displayMode != DdayDisplayMode.daysCount).toList();
@@ -396,13 +403,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ReorderableListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: visibleCategories.length,
+                    itemCount: displayedCategories.length,
                     // ignore: deprecated_member_use
                     onReorder: (oldIndex, newIndex) {
                       ref.read(categoryListProvider.notifier).reorderCategories(oldIndex, newIndex);
                     },
                     itemBuilder: (context, index) {
-                      final category = visibleCategories[index];
+                      final category = displayedCategories[index];
                       final items = ref.watch(planItemsByCategoryProvider(category.categoryKey));
                       final countUpItems = items.where((i) => i.displayMode == DdayDisplayMode.daysCount).toList();
                       final countDownItems = items.where((i) => i.displayMode != DdayDisplayMode.daysCount).toList();
@@ -432,7 +439,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 else
                   Column(
                     children: [
-                      for (final category in visibleCategories) ...[
+                      for (final category in displayedCategories) ...[
                         Builder(builder: (context) {
                           final items = ref.watch(planItemsByCategoryProvider(category.categoryKey));
                           final countUpItems = items.where((i) => i.displayMode == DdayDisplayMode.daysCount).toList();
@@ -465,6 +472,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required String icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required CategoryThemePalette palette,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? palette.bg : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isSelected ? palette.border : const Color(0xFFE5E7EB),
+            width: isSelected ? 1.6 : 1.2,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: palette.primary.withValues(alpha: 0.12),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 13)),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? palette.text : const Color(0xFF4B5563),
+              ),
+            ),
+          ],
         ),
       ),
     );

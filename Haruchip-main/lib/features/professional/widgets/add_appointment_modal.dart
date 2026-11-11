@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
+import '../../shared/widgets/common_date_time_picker.dart';
 import '../../shared/widgets/event_sync_options_section.dart';
-import '../../shared/widgets/haru_calendar_picker.dart';
 import '../models/appointment_model.dart';
 
 /// 일정 / 약속 추가 및 수정 모달
@@ -84,42 +84,38 @@ class _AddAppointmentModalState extends State<_AddAppointmentModal> {
     super.dispose();
   }
 
-  void _openDatePicker() {
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              HaruCalendarPicker(
-                initialDate: _selectedDate,
-                firstDate: DateTime(2020, 1, 1),
-                lastDate: DateTime(2035, 12, 31),
-                onDateChanged: (picked) {
-                  setState(() => _selectedDate = picked);
-                  Navigator.of(dialogCtx).pop();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+  void _openDatePicker() async {
+    final picked = await showCommonDatePickerModal(
+      context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020, 1, 1),
+      lastDate: DateTime(2035, 12, 31),
+      title: '약속 날짜 선택',
     );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
   }
 
   Future<void> _openTimePicker() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime ?? const TimeOfDay(hour: 14, minute: 0),
+    final curTime = _selectedTime ?? const TimeOfDay(hour: 14, minute: 0);
+    final currentDt = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      curTime.hour,
+      curTime.minute,
     );
-    if (picked != null) {
+    final picked = await showCommonDateTimePickerModal(
+      context,
+      initialDateTime: currentDt,
+      isAllDay: false,
+      showAllDayToggle: false,
+      title: '약속 시간 선택',
+    );
+    if (picked != null && mounted) {
       setState(() {
-        _selectedTime = picked;
+        _selectedTime = TimeOfDay(hour: picked.hour, minute: picked.minute);
         _isAllDay = false;
       });
     }

@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../calendar/providers/schedule_room_provider.dart';
 import '../../categories/logic/repeat_rule.dart';
+import '../../categories/models/category.dart';
 import '../../categories/models/pet_profile.dart';
 import '../../categories/providers/category_provider.dart';
-import '../../categories/providers/custom_tags_provider.dart';
 import '../../plan/models/plan_item.dart';
 import '../../plan/providers/plan_provider.dart';
 import '../../../services/calendar/external_calendar_push_service.dart';
-import 'haru_calendar_picker.dart';
+import '../../../services/notification/local_push_notification_service.dart';
+import 'common_date_time_picker.dart';
 
 // iOS Style Color Tokens
 const Color _kSheetBg = Color(0xFFF2F2F7);
@@ -21,18 +22,6 @@ const Color _kBlue = Color(0xFF007AFF);
 const Color _kChipBg = Color(0xFFE5E5EA);
 const Color _kChipSelected = Color(0xFF007AFF);
 
-const Map<String, List<String>> _kPresets = {
-  'couple': ['데이트', '기념일', '여행', '처음 만난 날', '100일'],
-  'baby': ['예방접종', '영유아검진', '소아과(진료)', '성장기록', '돌잔치/기념일'],
-  'pet': ['병원', '미용', '사료구매', '산책', '예방접종', '생일'],
-  'exam': ['필기시험', '실기시험', '원서접수', '합격발표', '중간고사', '기말고사', '토익'],
-  'birthday': ['생일', '선물 준비', '파티', '케이크 예약'],
-  'plan': ['미팅', '마감', '약속', '기획안', '클라이언트'],
-  'military': ['입대', '전역', '면회', '외박'],
-  'solo': ['나홀로여행', '바디프로필', '취미/운동', '새출발', '데이트/소개팅'],
-  'fandom': ['컴백', '음방', '콘서트/팬미팅', '티켓팅', '생일', '팬싸', '자체컨텐츠'],
-};
-
 const List<({RepeatType type, String label})> _kRepeatOptions = [
   (type: RepeatType.none, label: '반복 안 함'),
   (type: RepeatType.daily, label: '매일'),
@@ -40,6 +29,15 @@ const List<({RepeatType type, String label})> _kRepeatOptions = [
   (type: RepeatType.monthly, label: '매월'),
   (type: RepeatType.yearly, label: '매년'),
 ];
+
+/// 이벤트/일정 추가 폼에서 사용하는 등록 카테고리 레코드 타입 (null safe 통일)
+typedef EventCategoryOption = ({
+  String key,
+  String name,
+  String emoji,
+  Color color,
+  String id,
+});
 
 const List<String> _kWeekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -201,9 +199,10 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
   bool _isAllDay = false;
   late DateTime _startDate;
   TimeOfDay? _startTime;
-  bool _hasEndDate = false;
+  bool _hasEndDate = true;
   DateTime? _endDate;
   TimeOfDay? _endTime;
+  String _selectedTimeZone = '서울';
 
   // Repeat
   RepeatType _repeatType = RepeatType.none;
@@ -224,15 +223,17 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
   // Room Links
   final List<String> _selectedRoomIds = [];
 
-  // Expanded Calendar Accordion ('start' | 'end' | 'repeatEnd' | null)
-  String? _expandedCalendar;
-
   @override
   void initState() {
     super.initState();
     _selectedCategoryKey = widget.categoryKey.isEmpty ? 'plan' : widget.categoryKey;
     final now = DateTime.now();
     _startDate = widget.initialDate ?? DateTime(now.year, now.month, now.day);
+    _endDate = _startDate;
+    _startTime = const TimeOfDay(hour: 9, minute: 0);
+    _endTime = const TimeOfDay(hour: 10, minute: 0);
+    _hasEndDate = true;
+
     if (widget.initialTitle != null) {
       _titleCtrl.text = widget.initialTitle!;
     }
@@ -245,10 +246,13 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
       _startDate = item.date;
       _displayMode = item.displayMode;
       _isAllDay = item.isAllDay;
-      _startTime = item.deadlineTime;
-      _hasEndDate = item.endDate != null;
-      _endDate = item.endDate;
-      _endTime = item.endDeadlineTime;
+      _startTime = item.deadlineTime ?? const TimeOfDay(hour: 9, minute: 0);
+      _hasEndDate = true;
+      _endDate = item.endDate ?? item.date;
+      _endTime = item.endDeadlineTime ??
+          (_startTime != null
+              ? TimeOfDay(hour: (_startTime!.hour + 1) % 24, minute: _startTime!.minute)
+              : const TimeOfDay(hour: 10, minute: 0));
       _repeatType = item.repeatConfig.type;
       _reminder = item.reminder;
       _selectedWeekdays.addAll(item.repeatConfig.weekdays);
@@ -273,132 +277,6 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
     super.dispose();
   }
 
-  String get _headerTitle {
-    final isEdit = widget.existingItem != null;
-    final prefix = switch (_selectedCategoryKey) {
-      'couple' => '커플',
-      'baby' => '아기',
-      'pet' => '반려동물',
-      'exam' => '시험',
-      'birthday' => '생일',
-      'plan' => '내 일정',
-      'military' => '군대',
-      'solo' => '솔로',
-      'fandom' => '덕질',
-      'group' => '모임',
-      _ => '일정',
-    };
-    return isEdit ? '$prefix 일정 수정' : '$prefix 일정 추가';
-  }
-
-  void _onTagPressed(String tag) {
-    // Smart Replace: cleanly replace title text with selected tag
-    _titleCtrl.text = tag;
-
-    // Preset auto-behaviors
-    if (_selectedCategoryKey == 'pet') {
-      _displayMode = DdayDisplayMode.dday;
-      if (tag == '산책') {
-        _repeatType = RepeatType.daily;
-      } else if (tag == '사료구매' || tag == '사료 구매') {
-        _repeatType = RepeatType.monthly;
-      } else if (tag == '미용') {
-        _repeatType = RepeatType.monthly;
-      } else if (tag == '예방접종' || tag == '접종') {
-        _repeatType = RepeatType.yearly;
-      } else if (tag == '생일') {
-        _repeatType = RepeatType.yearly;
-      } else if (tag == '병원') {
-        _repeatType = RepeatType.none;
-      }
-    } else if (tag == '데이트' || tag == '여행') {
-      _displayMode = DdayDisplayMode.dday;
-    } else if (tag == '기념일') {
-      _displayMode = DdayDisplayMode.dday;
-      _repeatType = RepeatType.yearly;
-    } else if (_selectedCategoryKey == 'fandom') {
-      _displayMode = DdayDisplayMode.dday;
-      if (tag == '티켓팅') {
-        _isAllDay = false;
-        _syncGoogle = true;
-      } else if (tag == '컴백' || tag == '음방' || tag == '콘서트/팬미팅') {
-        _syncGoogle = true;
-      } else if (tag == '생일') {
-        _repeatType = RepeatType.yearly;
-      }
-    }
-    setState(() {});
-  }
-
-  Future<void> _showAddCustomTagDialog() async {
-    final tagCtrl = TextEditingController();
-    final newTag = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('태그 직접 추가', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-        content: TextField(
-          controller: tagCtrl,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: '새 태그 이름을 입력하세요',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _kBlue, foregroundColor: Colors.white),
-            onPressed: () {
-              final text = tagCtrl.text.trim();
-              if (text.isNotEmpty) Navigator.pop(ctx, text);
-            },
-            child: const Text('추가'),
-          ),
-        ],
-      ),
-    );
-
-    if (newTag != null && newTag.isNotEmpty) {
-      ref.read(categoryCustomTagsProvider.notifier).addCustomTag(_selectedCategoryKey, newTag);
-      _onTagPressed(newTag);
-    }
-  }
-
-  Future<void> _showDeleteCustomTagDialog(String tag) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('태그 삭제', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-        content: Text('\'$tag\' 커스텀 태그를 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('삭제', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      ref.read(categoryCustomTagsProvider.notifier).removeCustomTag(_selectedCategoryKey, tag);
-      if (_titleCtrl.text.trim() == tag) {
-        _titleCtrl.clear();
-      }
-      setState(() {});
-    }
-  }
-
   void _handleSave() {
     final title = _titleCtrl.text.trim();
     if (title.isEmpty) return;
@@ -417,6 +295,10 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
     final effectivePhotoUrl = _selectedCategoryKey == 'pet'
         ? (_selectedPetPhotoUrl ?? (_selectedPetIcon != null ? 'emoji:$_selectedPetIcon' : null))
         : widget.existingItem?.photoUrl;
+
+    final categories = ref.read(categoryListProvider);
+    final catMatch = categories.where((c) => c.categoryKey == _selectedCategoryKey || c.id == _selectedCategoryKey);
+    final selectedCatColorHex = catMatch.isNotEmpty ? catMatch.first.colorHex : null;
 
     if (widget.existingItem != null) {
       // Edit mode: update single or base item
@@ -437,12 +319,14 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
         roomLinks: _selectedRoomIds,
       );
       ref.read(planListProvider.notifier).updateItem(item);
+      LocalPushNotificationService.instance.schedulePlanReminder(item);
 
       // External calendar push
       ExternalCalendarPushService.instance.pushPlanItem(
         item: item,
         googleCalendarId: _selectedGoogleCalendarId,
         naverCalendarId: _selectedNaverCalendarId,
+        categoryColorHex: selectedCatColorHex,
       );
     } else {
       // Add mode: if repeat is configured, generate all recurring instances up to repeatEndDate!
@@ -476,12 +360,16 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
           items.add(it);
         }
         ref.read(planListProvider.notifier).addItems(items);
+        for (final it in items) {
+          LocalPushNotificationService.instance.schedulePlanReminder(it);
+        }
 
         if (items.isNotEmpty) {
           ExternalCalendarPushService.instance.pushPlanItem(
             item: items.first,
             googleCalendarId: _selectedGoogleCalendarId,
             naverCalendarId: _selectedNaverCalendarId,
+            categoryColorHex: selectedCatColorHex,
           );
         }
       } else {
@@ -503,11 +391,13 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
           roomLinks: _selectedRoomIds,
         );
         ref.read(planListProvider.notifier).addItem(item);
+        LocalPushNotificationService.instance.schedulePlanReminder(item);
 
         ExternalCalendarPushService.instance.pushPlanItem(
           item: item,
           googleCalendarId: _selectedGoogleCalendarId,
           naverCalendarId: _selectedNaverCalendarId,
+          categoryColorHex: selectedCatColorHex,
         );
       }
     }
@@ -518,6 +408,40 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
+    final categoriesState = ref.watch(categoryListProvider);
+    final List<EventCategoryOption> categories = categoriesState.isNotEmpty
+        ? categoriesState
+            .map((c) => (
+                  key: c.categoryKey,
+                  name: c.name,
+                  emoji: c.emoji,
+                  color: colorFromHex(c.colorHex),
+                  id: c.id.isNotEmpty ? c.id : c.categoryKey,
+                ))
+            .toList()
+        : const [
+            (key: 'plan', name: '내 일정', emoji: '📝', color: Color(0xFF60A5FA), id: 'plan'),
+            (key: 'couple', name: '커플', emoji: '❤️', color: Color(0xFFFF8DA1), id: 'couple'),
+            (key: 'solo', name: '솔로', emoji: '🌟', color: Color(0xFFC084FC), id: 'solo'),
+            (key: 'fandom', name: '덕질', emoji: '⭐', color: Color(0xFFFBBF24), id: 'fandom'),
+            (key: 'group', name: '모임', emoji: '👥', color: Color(0xFF34D399), id: 'group'),
+            (key: 'exam', name: '시험', emoji: '📚', color: Color(0xFF818CF8), id: 'exam'),
+            (key: 'birthday', name: '생일', emoji: '🎂', color: Color(0xFFF472B6), id: 'birthday'),
+            (key: 'baby', name: '아기', emoji: '👶', color: Color(0xFFFDE047), id: 'baby'),
+            (key: 'pet', name: '반려동물', emoji: '🐾', color: Color(0xFFFB923C), id: 'pet'),
+            (key: 'military', name: '군대', emoji: '🎖️', color: Color(0xFFA3E635), id: 'military'),
+            (key: 'wedding', name: '결혼', emoji: '💍', color: Color(0xFFFDA4AF), id: 'wedding'),
+            (key: 'travel', name: '여행', emoji: '✈️', color: Color(0xFF38BDF8), id: 'travel'),
+            (key: 'hobby', name: '취미', emoji: '🎨', color: Color(0xFF6EE7B7), id: 'hobby'),
+          ];
+
+    final currentCategory = categories.firstWhere(
+      (c) => c.key == _selectedCategoryKey,
+      orElse: () => categories.first,
+    );
+
+    final isEdit = widget.existingItem != null;
+    final headerTitle = isEdit ? '${currentCategory.name} 일정 수정' : '${currentCategory.name} 일정 추가';
 
     return Container(
       height: mediaQuery.size.height * 0.92,
@@ -550,12 +474,13 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
                   child: const Text('취소', style: TextStyle(color: _kLabel, fontSize: 16)),
                 ),
                 Expanded(
-                  child: Text(
-                    _headerTitle,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: _kLabel),
+                  child: Center(
+                    child: Text(
+                      headerTitle,
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: _kLabel),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 TextButton(
@@ -574,14 +499,10 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
             child: ListView(
               padding: EdgeInsets.fromLTRB(16, 0, 16, mediaQuery.viewInsets.bottom + 32),
               children: [
-                // 0. Category Target Selector (내 일정 / 커플 / 솔로 / 덕질 / 모임 등)
-                _buildCategoryTargetSection(),
-                const SizedBox(height: 14),
-
                 // 0-1. Pet Target Selector (반려동물 카테고리 선택 시 노출)
                 _buildPetTargetSection(),
 
-                // 1. Title & Quick Tags
+                // 1. Title Input (단일 깔끔한 텍스트 필드)
                 _buildTitleSection(),
                 const SizedBox(height: 14),
 
@@ -593,112 +514,24 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
                 _buildDateTimeSection(),
                 const SizedBox(height: 14),
 
-                // 4. Repeat Settings
-                _buildRepeatSection(),
+                // 4. White Cards: 반복 & 카테고리
+                _buildRepeatAndCalendarCards(currentCategory, categories),
                 const SizedBox(height: 14),
 
-                // 4-1. Pre-event Reminder
+                // 5. Pre-event Reminder
                 _buildReminderSection(),
                 const SizedBox(height: 14),
 
-                // 5. Calendar Sync (Google / Naver One-way Outbound Push)
+                // 6. Calendar Sync (Google / Naver One-way Outbound Push)
                 _buildCalendarSyncSection(),
                 const SizedBox(height: 14),
 
-                // 6. Room Links
+                // 7. Room Links
                 _buildRoomSection(),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryTargetSection() {
-    const categoryOptions = [
-      (key: 'plan', label: '내 일정', emoji: '📝', color: Color(0xFF007AFF)),
-      (key: 'couple', label: '커플', emoji: '❤️', color: Color(0xFFFF2D55)),
-      (key: 'solo', label: '솔로', emoji: '🌟', color: Color(0xFF9333EA)),
-      (key: 'fandom', label: '덕질', emoji: '⭐', color: Color(0xFFF59E0B)),
-      (key: 'group', label: '모임', emoji: '👥', color: Color(0xFF10B981)),
-      (key: 'exam', label: '시험', emoji: '📚', color: Color(0xFF4F46E5)),
-      (key: 'birthday', label: '생일', emoji: '🎂', color: Color(0xFFEC4899)),
-      (key: 'baby', label: '아기', emoji: '👶', color: Color(0xFFF59E0B)),
-      (key: 'pet', label: '반려동물', emoji: '🐾', color: Color(0xFFD97706)),
-      (key: 'military', label: '군대', emoji: '🎖️', color: Color(0xFF556B2F)),
-    ];
-
-    return _buildGroupCard(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.category_outlined, size: 16, color: _kLabel),
-                SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '등록 카테고리 (D-Day 자동 연동)',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _kLabel),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final cat in categoryOptions)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            _selectedCategoryKey = cat.key;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: _selectedCategoryKey == cat.key
-                                ? cat.color.withValues(alpha: 0.15)
-                                : _kChipBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _selectedCategoryKey == cat.key
-                                  ? cat.color
-                                  : Colors.transparent,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(cat.emoji, style: const TextStyle(fontSize: 13)),
-                              const SizedBox(width: 4),
-                              Text(
-                                cat.label,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: _selectedCategoryKey == cat.key ? FontWeight.bold : FontWeight.w500,
-                                  color: _selectedCategoryKey == cat.key ? cat.color : _kLabel,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -824,112 +657,20 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
   }
 
   Widget _buildTitleSection() {
-    final defaultPresets = _kPresets[_selectedCategoryKey] ?? ['기념일', '일정', '약속'];
-    final customTags = ref.watch(categoryCustomTagsProvider)[_selectedCategoryKey] ?? [];
-    final allTags = [...defaultPresets, ...customTags];
-    final placeholder = switch (_selectedCategoryKey) {
-      'couple' => '예: 우리 100일, 여행 기념일',
-      'solo' => '예: 혼자만의 힐링 여행, 취미 시작',
-      'fandom' => '예: 최애 컴백일, 콘서트 티켓팅, 팬미팅',
-      'group' => '예: 동창회, 정기 모임, 스터디',
-      'exam' => '예: 정보처리기사 필기, 토익',
-      'birthday' => '예: 엄마 생신, ○○이 생일',
-      'baby' => '예: 2차 예방접종, 영유아검진, 백일 사진, 소아과 진료',
-      'pet' => '예: 병원 예약, 산책',
-      'military' => '예: 전역까지, 첫 휴가',
-      _ => '제목 입력 (예: 기획안 마감, 클라이언트 미팅)',
-    };
-
-    final currentTitle = _titleCtrl.text.trim();
-
     return _buildGroupCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _titleCtrl,
-            style: const TextStyle(fontSize: 16, color: _kLabel),
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: placeholder,
-              hintStyle: const TextStyle(color: _kSubLabel, fontSize: 14),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(16),
-            ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: TextField(
+          controller: _titleCtrl,
+          style: const TextStyle(fontSize: 16, color: _kLabel, fontWeight: FontWeight.w500),
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            hintText: '일정 제목을 입력하세요',
+            hintStyle: TextStyle(color: _kSubLabel, fontSize: 15),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(vertical: 14),
           ),
-          const Divider(height: 1, color: _kDivider),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final tag in allTags) ...[
-                  () {
-                    final isSelected = currentTitle == tag;
-                    final isCustom = customTags.contains(tag);
-                    return InkWell(
-                      onTap: () => _onTagPressed(tag),
-                      onLongPress: isCustom ? () => _showDeleteCustomTagDialog(tag) : null,
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isSelected ? _kBlue.withValues(alpha: 0.15) : _kChipBg,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSelected ? _kBlue : Colors.transparent,
-                            width: 1.2,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              tag,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? _kBlue : _kLabel,
-                              ),
-                            ),
-                            if (isCustom) ...[
-                              const SizedBox(width: 4),
-                              GestureDetector(
-                                onTap: () => _showDeleteCustomTagDialog(tag),
-                                child: Icon(
-                                  Icons.close,
-                                  size: 14,
-                                  color: isSelected ? _kBlue : _kSubLabel,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    );
-                  }(),
-                ],
-                InkWell(
-                  onTap: _showAddCustomTagDialog,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFC7C7CC)),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Text(
-                      '+ 태그 추가',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _kBlue),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -946,9 +687,7 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _kLabel),
             ),
             const SizedBox(height: 12),
-            // 좁으면 다음 줄로
-            Wrap(
-              runSpacing: 8,
+            Row(
               children: [
                 for (final opt in [
                   (DdayDisplayMode.dday, 'D-Day'),
@@ -986,289 +725,652 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
   }
 
   Widget _buildDateTimeSection() {
-    return _buildGroupCard(
-      child: Column(
-        children: [
-          // 하루 종일 Switch
-          SwitchListTile.adaptive(
-            title: const Text('하루 종일', style: TextStyle(fontSize: 15, color: _kLabel)),
-            value: _isAllDay,
-            activeTrackColor: _kBlue,
-            onChanged: (v) => setState(() => _isAllDay = v),
-          ),
-          const Divider(height: 1, color: _kDivider),
+    final startDateTime = DateTime(
+      _startDate.year,
+      _startDate.month,
+      _startDate.day,
+      _startTime?.hour ?? 9,
+      _startTime?.minute ?? 0,
+    );
+    final effectiveEndDate = _endDate ?? _startDate;
+    final endDateTime = DateTime(
+      effectiveEndDate.year,
+      effectiveEndDate.month,
+      effectiveEndDate.day,
+      _endTime?.hour ?? 10,
+      _endTime?.minute ?? 0,
+    );
 
-          // 시작일
-          ListTile(
-            title: const Text('시작일', style: TextStyle(fontSize: 15, color: _kLabel)),
-            trailing: Text(
-              '${_startDate.year}.${_startDate.month.toString().padLeft(2, '0')}.${_startDate.day.toString().padLeft(2, '0')}',
-              style: const TextStyle(fontSize: 15, color: _kBlue, fontWeight: FontWeight.bold),
-            ),
-            onTap: () => setState(() {
-              _expandedCalendar = _expandedCalendar == 'start' ? null : 'start';
-            }),
-          ),
-          if (_expandedCalendar == 'start')
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: HaruCalendarPicker(
-                initialDate: _startDate,
-                firstDate: DateTime(1900),
-                lastDate: DateTime(2100),
-                onDateChanged: (d) => setState(() {
-                  _startDate = d;
-                  _expandedCalendar = null;
-                }),
-              ),
-            ),
-
-          // 시작 시간 (하루 종일이 꺼져 있을 때)
-          if (!_isAllDay) ...[
-            const Divider(height: 1, color: _kDivider),
-            ListTile(
-              title: const Text('시작 시간', style: TextStyle(fontSize: 15, color: _kLabel)),
-              trailing: Text(
-                _startTime != null ? _startTime!.format(context) : '시간 설정',
-                style: TextStyle(fontSize: 15, color: _startTime != null ? _kBlue : _kSubLabel),
-              ),
-              onTap: () async {
-                final time = await showTimePicker(
-                  context: context,
-                  initialTime: _startTime ?? TimeOfDay.now(),
-                );
-                if (time != null) setState(() => _startTime = time);
-              },
-            ),
-          ],
-
-          const Divider(height: 1, color: _kDivider),
-
-          // 종료일 설정 Switch
-          SwitchListTile.adaptive(
-            title: const Text('종료일 설정', style: TextStyle(fontSize: 15, color: _kLabel)),
-            value: _hasEndDate,
-            activeTrackColor: _kBlue,
-            onChanged: (v) => setState(() {
-              _hasEndDate = v;
-              if (v && _endDate == null) _endDate = _startDate;
-            }),
-          ),
-
-          if (_hasEndDate) ...[
-            const Divider(height: 1, color: _kDivider),
-            ListTile(
-              title: const Text('종료일', style: TextStyle(fontSize: 15, color: _kLabel)),
-              trailing: Text(
-                _endDate != null
-                    ? '${_endDate!.year}.${_endDate!.month.toString().padLeft(2, '0')}.${_endDate!.day.toString().padLeft(2, '0')}'
-                    : '종료일 선택',
-                style: const TextStyle(fontSize: 15, color: _kBlue, fontWeight: FontWeight.bold),
-              ),
-              onTap: () => setState(() {
-                _expandedCalendar = _expandedCalendar == 'end' ? null : 'end';
-              }),
-            ),
-            if (_expandedCalendar == 'end')
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: HaruCalendarPicker(
-                  initialDate: _endDate ?? _startDate,
-                  firstDate: DateTime(1900),
-                  lastDate: DateTime(2100),
-                  onDateChanged: (d) => setState(() {
-                    _endDate = d;
-                    _expandedCalendar = null;
-                  }),
-                ),
-              ),
-            // 종료 시간 (하루 종일이 꺼져 있을 때)
-            if (!_isAllDay) ...[
-              const Divider(height: 1, color: _kDivider),
-              ListTile(
-                title: const Text('종료 시간', style: TextStyle(fontSize: 15, color: _kLabel)),
-                trailing: Text(
-                  _endTime != null ? _endTime!.format(context) : '시간 설정',
-                  style: TextStyle(fontSize: 15, color: _endTime != null ? _kBlue : _kSubLabel),
-                ),
-                onTap: () async {
-                  final time = await showTimePicker(
-                    context: context,
-                    initialTime: _endTime ?? TimeOfDay.now(),
-                  );
-                  if (time != null) setState(() => _endTime = time);
-                },
-              ),
-            ],
-          ],
-        ],
-      ),
+    return CommonDateTimePicker(
+      initialStartDate: startDateTime,
+      initialEndDate: endDateTime,
+      isAllDay: _isAllDay,
+      showAllDayToggle: true,
+      hasEndDate: true,
+      timeZone: _selectedTimeZone,
+      onTimeZoneChanged: (tz) {
+        setState(() => _selectedTimeZone = tz);
+      },
+      onDateTimeChanged: (start, end, isAllDay) {
+        setState(() {
+          _startDate = DateTime(start.year, start.month, start.day);
+          _startTime = isAllDay ? null : TimeOfDay(hour: start.hour, minute: start.minute);
+          _isAllDay = isAllDay;
+          _hasEndDate = true;
+          if (end != null) {
+            _endDate = DateTime(end.year, end.month, end.day);
+            _endTime = isAllDay ? null : TimeOfDay(hour: end.hour, minute: end.minute);
+          } else {
+            _endDate = _isAllDay ? _startDate : _startDate.add(const Duration(hours: 1));
+            _endTime = _isAllDay ? null : TimeOfDay(hour: (_startTime?.hour ?? 9) + 1, minute: _startTime?.minute ?? 0);
+          }
+        });
+      },
     );
   }
 
-  Widget _buildRepeatSection() {
+  Widget _buildRepeatAndCalendarCards(
+    EventCategoryOption currentCategory,
+    List<EventCategoryOption> categories,
+  ) {
     final repeatLabel = _kRepeatOptions.firstWhere((o) => o.type == _repeatType).label;
 
-    return _buildGroupCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ListTile(
-            title: const Text('반복', style: TextStyle(fontSize: 15, color: _kLabel)),
-            trailing: Row(
+    return Column(
+      children: [
+        // Card 1: 반복
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            children: [
+              InkWell(
+                onTap: _showRepeatPickerModal,
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                  child: Row(
+                    children: [
+                      const Text(
+                        '반복',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: _kLabel,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        _repeatType == RepeatType.none ? '안 함' : repeatLabel,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: _repeatType == RepeatType.none
+                              ? const Color(0xFF6B7280)
+                              : _kBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 20,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Weekly multi-day selector
+              if (_repeatType == RepeatType.weekly) ...[
+                const Divider(height: 1, color: _kDivider),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('반복 요일 선택', style: TextStyle(fontSize: 13, color: _kSubLabel, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: List.generate(7, (i) {
+                          final weekdayNum = i == 0 ? 7 : i;
+                          final isSelected = _selectedWeekdays.contains(weekdayNum);
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                if (isSelected) {
+                                  _selectedWeekdays.remove(weekdayNum);
+                                } else {
+                                  _selectedWeekdays.add(weekdayNum);
+                                }
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(18),
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: isSelected ? _kBlue : _kChipBg,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                _kWeekdayLabels[i],
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : _kLabel,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Monthly day of month selector
+              if (_repeatType == RepeatType.monthly) ...[
+                const Divider(height: 1, color: _kDivider),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('반복 날짜 선택 (매월)', style: TextStyle(fontSize: 13, color: _kSubLabel, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: List.generate(31, (index) {
+                          final day = index + 1;
+                          final isSelected = _selectedDaysOfMonth.contains(day);
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                if (isSelected) {
+                                  _selectedDaysOfMonth.remove(day);
+                                } else {
+                                  _selectedDaysOfMonth.add(day);
+                                }
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              width: 38,
+                              height: 32,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: isSelected ? _kBlue : _kChipBg,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '$day일',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : _kLabel,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Repeat End Date
+              if (_repeatType != RepeatType.none) ...[
+                const Divider(height: 1, color: _kDivider),
+                ListTile(
+                  title: const Text('반복 종료일', style: TextStyle(fontSize: 15, color: _kLabel)),
+                  trailing: Text(
+                    _repeatEndDate != null
+                        ? '${_repeatEndDate!.year}.${_repeatEndDate!.month.toString().padLeft(2, '0')}.${_repeatEndDate!.day.toString().padLeft(2, '0')}'
+                        : '계속 반복 (없음)',
+                    style: const TextStyle(fontSize: 15, color: _kBlue, fontWeight: FontWeight.bold),
+                  ),
+                  onTap: () async {
+                    final picked = await showCommonDatePickerModal(
+                      context,
+                      initialDate: _repeatEndDate ?? _startDate.add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => _repeatEndDate = picked);
+                    }
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Card 2: 카테고리
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: () => _showCategoryPickerModal(categories),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              child: Row(
+                children: [
+                  const Text(
+                    '카테고리',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _kLabel,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: currentCategory.color,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    currentCategory.name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _kLabel,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 20,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showRepeatPickerModal() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Material(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  repeatLabel,
-                  style: const TextStyle(fontSize: 15, color: _kBlue, fontWeight: FontWeight.w600),
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1D1D6),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-                const Icon(Icons.chevron_right, size: 20, color: _kSubLabel),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Text(
+                    '반복',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: _kLabel),
+                  ),
+                ),
+                const Divider(height: 1, color: _kDivider),
+                for (final opt in _kRepeatOptions)
+                  ListTile(
+                    leading: opt.type == _repeatType
+                        ? const Icon(Icons.check, size: 20, color: _kBlue)
+                        : const SizedBox(width: 20),
+                    title: Text(
+                      opt.label,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: opt.type == _repeatType ? FontWeight.bold : FontWeight.normal,
+                        color: opt.type == _repeatType ? _kBlue : _kLabel,
+                      ),
+                    ),
+                    onTap: () {
+                      setState(() => _repeatType = opt.type);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                const SizedBox(height: 10),
               ],
             ),
-            onTap: () async {
-              final val = await showMenu<RepeatType>(
-                context: context,
-                position: const RelativeRect.fromLTRB(100, 300, 16, 0),
-                items: _kRepeatOptions.map((o) => PopupMenuItem(value: o.type, child: Text(o.label))).toList(),
-              );
-              if (val != null) setState(() => _repeatType = val);
-            },
           ),
+        );
+      },
+    );
+  }
 
-          // Weekly multi-day selector
-          if (_repeatType == RepeatType.weekly) ...[
-            const Divider(height: 1, color: _kDivider),
-            Padding(
-              padding: const EdgeInsets.all(12),
+  static const List<({String name, Color color, String hex})> _kPastelPalette = [
+    (name: '연핑크', color: Color(0xFFFF8DA1), hex: '#FF8DA1'),
+    (name: '연보라', color: Color(0xFFC084FC), hex: '#C084FC'),
+    (name: '파스텔 옐로우', color: Color(0xFFFBBF24), hex: '#FBBF24'),
+    (name: '소프트 옐로우', color: Color(0xFFFDE047), hex: '#FDE047'),
+    (name: '파스텔 피치', color: Color(0xFFFB923C), hex: '#FB923C'),
+    (name: '파스텔 에메랄드', color: Color(0xFF34D399), hex: '#34D399'),
+    (name: '파스텔 민트', color: Color(0xFF6EE7B7), hex: '#6EE7B7'),
+    (name: '파스텔 인디고', color: Color(0xFF818CF8), hex: '#818CF8'),
+    (name: '파스텔 스카이', color: Color(0xFF38BDF8), hex: '#38BDF8'),
+    (name: '로맨틱 로즈', color: Color(0xFFFDA4AF), hex: '#FDA4AF'),
+    (name: '파스텔 카키', color: Color(0xFFA3E635), hex: '#A3E635'),
+    (name: '파스텔 핑크', color: Color(0xFFF472B6), hex: '#F472B6'),
+  ];
+
+  void _showCategoryPickerModal(
+    List<EventCategoryOption> categories,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Material(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.65,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('반복 요일 선택', style: TextStyle(fontSize: 13, color: _kSubLabel, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: List.generate(7, (i) {
-                      final weekdayNum = i == 0 ? 7 : i;
-                      final isSelected = _selectedWeekdays.contains(weekdayNum);
-                      return InkWell(
-                        onTap: () {
-                          setState(() {
-                            if (isSelected) {
-                              _selectedWeekdays.remove(weekdayNum);
-                            } else {
-                              _selectedWeekdays.add(weekdayNum);
-                            }
-                          });
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD1D1D6),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Text(
+                      '카테고리 선택',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: _kLabel),
+                    ),
+                  ),
+                  const Divider(height: 1, color: _kDivider),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: categories.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                      itemBuilder: (context, index) {
+                        final item = categories[index];
+                        final isSelected = item.key == _selectedCategoryKey;
+                        return ListTile(
+                          leading: isSelected
+                              ? const Icon(Icons.check, size: 20, color: _kBlue)
+                              : const SizedBox(width: 20),
+                          title: Row(
+                            children: [
+                              Text(item.emoji, style: const TextStyle(fontSize: 16)),
+                              const SizedBox(width: 8),
+                              Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: _kLabel,
+                                ),
+                              ),
+                            ],
+                          ),
+                          trailing: Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: item.color,
+                            ),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _selectedCategoryKey = item.key;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  const Divider(height: 1, color: _kDivider),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.add_rounded, size: 20, color: _kBlue),
+                        label: const Text(
+                          '+ 새 카테고리 추가',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _kBlue),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: _kBlue, width: 1.2),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _showAddNewCategoryDialog();
                         },
-                        borderRadius: BorderRadius.circular(18),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          alignment: Alignment.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAddNewCategoryDialog() {
+    final nameCtrl = TextEditingController();
+    String selectedHex = _kPastelPalette.first.hex;
+    String selectedEmoji = '📌';
+    final emojis = ['📌', '✨', '🗓️', '🎯', '🌿', '☕', '💡', '🌟', '🎵', '💼', '🏡', '🎨'];
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final currentColor = colorFromHex(selectedHex);
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.bookmark_add_outlined, size: 22, color: _kBlue),
+                  SizedBox(width: 8),
+                  Text('새 카테고리 추가', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _kLabel)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        PopupMenuButton<String>(
+                          initialValue: selectedEmoji,
+                          onSelected: (val) => setDialogState(() => selectedEmoji = val),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(selectedEmoji, style: const TextStyle(fontSize: 22)),
+                            ),
+                          ),
+                          itemBuilder: (ctx) => [
+                            for (final em in emojis)
+                              PopupMenuItem(value: em, child: Text(em, style: const TextStyle(fontSize: 20))),
+                          ],
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: nameCtrl,
+                            autofocus: true,
+                            decoration: InputDecoration(
+                              hintText: '카테고리 이름 입력',
+                              hintStyle: const TextStyle(color: _kSubLabel, fontSize: 14),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              filled: true,
+                              fillColor: const Color(0xFFF9FAFB),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: _kBlue, width: 1.5),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        const Text(
+                          '파스텔 고유 색상',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _kLabel),
+                        ),
+                        const Spacer(),
+                        Container(
+                          width: 14,
+                          height: 14,
                           decoration: BoxDecoration(
-                            color: isSelected ? _kBlue : _kChipBg,
                             shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            _kWeekdayLabels[i],
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : _kLabel,
-                            ),
+                            color: currentColor,
                           ),
                         ),
-                      );
-                    }),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // Monthly day of month selector
-          if (_repeatType == RepeatType.monthly) ...[
-            const Divider(height: 1, color: _kDivider),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('반복 날짜 선택 (매월)', style: TextStyle(fontSize: 13, color: _kSubLabel, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: List.generate(31, (index) {
-                      final day = index + 1;
-                      final isSelected = _selectedDaysOfMonth.contains(day);
-                      return InkWell(
-                        onTap: () {
-                          setState(() {
-                            if (isSelected) {
-                              _selectedDaysOfMonth.remove(day);
-                            } else {
-                              _selectedDaysOfMonth.add(day);
-                            }
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: 38,
-                          height: 32,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: isSelected ? _kBlue : _kChipBg,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '$day일',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : _kLabel,
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final p in _kPastelPalette)
+                          InkWell(
+                            onTap: () => setDialogState(() => selectedHex = p.hex),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: p.color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: selectedHex == p.hex ? _kLabel : Colors.white,
+                                  width: selectedHex == p.hex ? 2.5 : 1.5,
+                                ),
+                                boxShadow: [
+                                  if (selectedHex == p.hex)
+                                    BoxShadow(
+                                      color: p.color.withValues(alpha: 0.5),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                ],
+                              ),
+                              child: selectedHex == p.hex
+                                  ? const Icon(Icons.check, size: 18, color: Colors.white)
+                                  : null,
                             ),
                           ),
-                        ),
-                      );
-                    }),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // Repeat End Date
-          if (_repeatType != RepeatType.none) ...[
-            const Divider(height: 1, color: _kDivider),
-            ListTile(
-              title: const Text('반복 종료일', style: TextStyle(fontSize: 15, color: _kLabel)),
-              trailing: Text(
-                _repeatEndDate != null
-                    ? '${_repeatEndDate!.year}.${_repeatEndDate!.month.toString().padLeft(2, '0')}.${_repeatEndDate!.day.toString().padLeft(2, '0')}'
-                    : '계속 반복 (없음)',
-                style: const TextStyle(fontSize: 15, color: _kBlue, fontWeight: FontWeight.bold),
-              ),
-              onTap: () => setState(() {
-                _expandedCalendar = _expandedCalendar == 'repeatEnd' ? null : 'repeatEnd';
-              }),
-            ),
-            if (_expandedCalendar == 'repeatEnd')
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: HaruCalendarPicker(
-                  initialDate: _repeatEndDate ?? _startDate.add(const Duration(days: 365)),
-                  firstDate: DateTime(1900),
-                  lastDate: DateTime(2100),
-                  onDateChanged: (d) => setState(() {
-                    _repeatEndDate = d;
-                    _expandedCalendar = null;
-                  }),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline, size: 15, color: _kBlue),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '이 카테고리 색상은 캘린더 일정 표시에도 동일하게 적용됩니다',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF1E40AF),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-          ],
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('취소', style: TextStyle(color: _kSubLabel)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _kBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () {
+                    final name = nameCtrl.text.trim();
+                    if (name.isEmpty) return;
+
+                    final newCat = ref.read(categoryListProvider.notifier).addCategory(
+                          categoryKey: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+                          name: name,
+                          emoji: selectedEmoji,
+                          colorHex: selectedHex,
+                        );
+
+                    setState(() {
+                      _selectedCategoryKey = newCat.categoryKey;
+                    });
+                    Navigator.pop(dialogCtx);
+                  },
+                  child: const Text('추가', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1393,7 +1495,13 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
               children: [
                 Icon(Icons.calendar_today, size: 18, color: Color(0xFF4285F4)),
                 SizedBox(width: 8),
-                Text('구글 캘린더 연동 (단방향 Push)', style: TextStyle(fontSize: 15, color: _kLabel)),
+                Expanded(
+                  child: Text(
+                    '구글 캘린더 연동 (단방향 Push)',
+                    style: TextStyle(fontSize: 15, color: _kLabel),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             value: _syncGoogle,
@@ -1452,7 +1560,13 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
               children: [
                 Icon(Icons.calendar_month, size: 18, color: Color(0xFF03C75A)),
                 SizedBox(width: 8),
-                Text('네이버 캘린더 연동 (단방향 Push)', style: TextStyle(fontSize: 15, color: _kLabel)),
+                Expanded(
+                  child: Text(
+                    '네이버 캘린더 연동 (단방향 Push)',
+                    style: TextStyle(fontSize: 15, color: _kLabel),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             value: _syncNaver,

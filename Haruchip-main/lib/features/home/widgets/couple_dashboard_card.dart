@@ -43,9 +43,9 @@ class CoupleDashboardCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.protoCoupleBg,
+          color: AppColors.coupleBg,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.protoCoupleBgMuted, width: 2),
+          border: Border.all(color: AppColors.coupleBorder, width: 2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

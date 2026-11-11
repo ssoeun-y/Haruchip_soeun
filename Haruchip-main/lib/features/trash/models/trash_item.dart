@@ -70,6 +70,13 @@ class TrashItem {
     return '남은 복구 기간 D-$rem';
   }
 
+  /// 남은 보관 일수 라벨 (ex. "28일 남음")
+  String get remainingDaysText {
+    final rem = daysRemaining;
+    if (rem <= 0) return '오늘 만료 예정';
+    return '$rem일 남음';
+  }
+
   /// 30일 만료 여부 (영구 Purge 대상)
   bool get isExpired => daysRemaining <= 0;
 

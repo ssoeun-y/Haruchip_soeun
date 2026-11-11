@@ -70,6 +70,33 @@ class AppColors {
   static const Color protoCoupleText = Color(0xFFDB2777); // pink-600
   static const Color protoCoupleTextStrong = Color(0xFFBE185D); // pink-700
 
+  // --- 네추럴 미니멀 통일 프리셋 (커플 & 나만의 카테고리 & 취미 & 여행) ---
+  // [커플]: 은은한 베이비 핑크
+  static const Color coupleBg = Color(0xFFFFF0F3);
+  static const Color coupleBorder = Color(0xFFFFCCD5);
+  static const Color coupleText = Color(0xFF4A4A4A);
+
+  // [나만의 카테고리]: 단정한 모던 웜그레이
+  static const Color myCategoryBg = Color(0xFFF8F9FA);
+  static const Color myCategoryBorder = Color(0xFFE9ECEF);
+  static const Color myCategoryText = Color(0xFF343A40);
+
+  // [취미]: 편안하고 차분한 소프트 세이지/올리브 파스텔
+  static const Color hobbyBg = Color(0xFFF4F7F4);
+  static const Color hobbyBorder = Color(0xFFDDE7DD);
+  static const Color hobbyText = Color(0xFF354235);
+
+  // [여행]: 설레고 청량한 파스텔 스카이 블루
+  static const Color travelBg = Color(0xFFF0F8FF);
+  static const Color travelBorder = Color(0xFFD6ECFF);
+  static const Color travelText = Color(0xFF2C3E50);
+
+  // [결혼 준비]: 로맨틱 로즈 샴페인 파스텔
+  static const Color weddingBg = Color(0xFFFFF5F5);
+  static const Color weddingBorder = Color(0xFFFED7D7);
+  static const Color weddingText = Color(0xFF742A2A);
+  static const Color weddingPrimary = Color(0xFFE53E3E);
+
   /// D-day/캘린더 등록 시 색상은 무료 프리셋 7개로 고정한다(CLAUDE.md §6).
   /// 프리셋 밖 커스텀 컬러피커는 프리미엄 유료 기능이라 이번 범위(카테고리
   /// 커스텀 1~4단계)에서는 만들지 않는다 — 카테고리 생성 폼은 이 7개

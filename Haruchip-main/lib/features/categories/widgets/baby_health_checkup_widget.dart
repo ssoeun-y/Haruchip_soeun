@@ -4,18 +4,18 @@ import '../../../design_system/colors.dart';
 import '../data/baby_health_database.dart';
 import '../models/baby_profile.dart';
 
-/// 영유아 건강검진 (1~8차) & 신체 성장 기록 (키/몸무게/머리둘레) 위젯
+/// 영유아 건강검진 (1~8차) 독립 위젯
 class BabyHealthCheckupWidget extends StatelessWidget {
   const BabyHealthCheckupWidget({
     super.key,
     required this.profile,
     required this.onToggleCheckup,
-    required this.onOpenAddGrowthRecord,
+    this.onOpenAddGrowthRecord,
   });
 
   final BabyProfile profile;
   final ValueChanged<HealthCheckupDose> onToggleCheckup;
-  final VoidCallback onOpenAddGrowthRecord;
+  final VoidCallback? onOpenAddGrowthRecord;
 
   List<HealthCheckupDose> get _effectiveDoses {
     final existing = profile.checkupDoses;
@@ -31,7 +31,6 @@ class BabyHealthCheckupWidget extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final doses = _effectiveDoses;
-    final growthRecords = profile.growthRecords;
 
     final completedCount = doses.where((d) => d.isCompleted).length;
 
@@ -57,25 +56,20 @@ class BabyHealthCheckupWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
-                child: Row(
-                  children: [
-                    Text('🩺', style: TextStyle(fontSize: 18)),
-                    SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        '국가 영유아 건강검진 (1~8차)',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.protoHeading,
-                        ),
-                      ),
+              const Row(
+                children: [
+                  Text('🩺', style: TextStyle(fontSize: 18)),
+                  SizedBox(width: 8),
+                  Text(
+                    '국가 영유아 건강검진 (1~8차)',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.protoHeading,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -161,8 +155,7 @@ class BabyHealthCheckupWidget extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Wrap(
-                            crossAxisAlignment: WrapCrossAlignment.center,
+                          Row(
                             children: [
                               Text(
                                 '${dose.stage}차 검진',
@@ -216,112 +209,28 @@ class BabyHealthCheckupWidget extends StatelessWidget {
             },
           ),
 
-          const SizedBox(height: 20),
-
-          // 3. 신체 성장 기록 섹션
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Row(
-                  children: [
-                    Text('📏', style: TextStyle(fontSize: 18)),
-                    SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        '신체 성장 기록 (키/몸무게/머리둘레)',
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.protoHeading,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: onOpenAddGrowthRecord,
-                icon: const Icon(Icons.add_rounded, size: 14),
-                label: const Text('기록 추가', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD97706),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          if (growthRecords.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                '아직 등록된 신체 측정 기록이 없습니다.\n상단의 [기록 추가] 버튼을 눌러보세요.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: growthRecords.length > 3 ? 3 : growthRecords.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
-              itemBuilder: (context, index) {
-                final sorted = List<GrowthRecord>.from(growthRecords)
-                  ..sort((a, b) => b.date.compareTo(a.date));
-                final record = sorted[index];
-
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        _formatDate(record.date),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF475569),
-                        ),
-                      ),
-                      const Spacer(),
-                      if (record.heightCm != null)
-                        Text(
-                          '키 ${record.heightCm}cm  ',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0284C7)),
-                        ),
-                      if (record.weightKg != null)
-                        Text(
-                          '몸무게 ${record.weightKg}kg  ',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFD97706)),
-                        ),
-                      if (record.headCircumferenceCm != null)
-                        Text(
-                          '머리둘레 ${record.headCircumferenceCm}cm',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
-                        ),
-                    ],
-                  ),
-                );
-              },
+          const SizedBox(height: 12),
+          // 공식 안내 가이드라인 안내
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
             ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFFB45309)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '출처: 국민건강보험공단 영유아 건강검진 표준 일정표 기준 (1~8차)',
+                    style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

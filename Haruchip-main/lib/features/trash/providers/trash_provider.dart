@@ -64,6 +64,12 @@ class TrashBinNotifier extends StateNotifier<List<TrashItem>> {
     state = state.where((i) => i.id != id).toList();
   }
 
+  /// 복수 항목 영구 삭제
+  void permanentlyDeleteMultiple(Iterable<String> ids) {
+    final set = ids.toSet();
+    state = state.where((i) => !set.contains(i.id)).toList();
+  }
+
   /// 휴지통 전체 비우기
   void emptyTrash() {
     state = [];
@@ -76,6 +82,14 @@ class TrashBinNotifier extends StateNotifier<List<TrashItem>> {
     final item = match.first;
     state = state.where((i) => i.id != id).toList();
     return item;
+  }
+
+  /// 복수 항목 복구 시 휴지통 목록에서 일괄 제거
+  List<TrashItem> restoreMultiple(Iterable<String> ids) {
+    final set = ids.toSet();
+    final matched = state.where((i) => set.contains(i.id)).toList();
+    state = state.where((i) => !set.contains(i.id)).toList();
+    return matched;
   }
 }
 

@@ -16,6 +16,6 @@ void main() {
       const ProviderScope(child: HaruChipApp()),
     );
 
-    expect(find.text('소중한 날들을 더 특별하게,\n하루칩과 함께 시작해요'), findsOneWidget);
+    expect(find.text('하루의 소중한 조각들을 담아봐요'), findsOneWidget);
   });
 }

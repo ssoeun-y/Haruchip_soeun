@@ -6,14 +6,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
 import '../../../services/calendar/external_calendar_push_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../categories/models/category.dart';
 import '../../categories/providers/category_provider.dart';
 import '../../home/screens/trash_bin_screen.dart';
+import '../../onboarding/screens/login_screen.dart';
+import '../../onboarding/screens/splash_screen.dart';
 import '../../plan/models/plan_item.dart';
 import '../../plan/providers/plan_provider.dart';
 import '../../trash/providers/trash_provider.dart';
 import '../../widgets/screens/widget_simulator_screen.dart';
+import '../../onboarding/screens/app_permission_screen.dart';
+import '../../shared/widgets/common_date_time_picker.dart';
 import 'hidden_categories_screen.dart';
+import 'storage_manager_screen.dart';
 
 /// 앱 전체 설정 및 백업/외부 연동/알림 통합 관리 화면
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -72,6 +78,99 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _handleSignOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('로그아웃', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        content: const Text('현재 계정에서 로그아웃하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('로그아웃'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(authServiceProvider).signOut();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그아웃되었습니다.'), behavior: SnackBarBehavior.floating),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const SplashScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  Future<void> _handleDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFE11D48)),
+            SizedBox(width: 8),
+            Text('회원 탈퇴 (계정 삭제)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFFE11D48))),
+          ],
+        ),
+        content: const Text(
+          '정말로 하루칩을 탈퇴하시겠습니까?\n\n'
+          '탈퇴 시 등록된 모든 D-Day, 카테고리, 메모 및 사진 데이터가 즉시 영구 삭제되며 복구할 수 없습니다.',
+          style: TextStyle(fontSize: 13.5, height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE11D48),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('즉시 탈퇴'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ref.read(authServiceProvider).deleteAccount();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('계정이 영구히 삭제되었습니다.'), behavior: SnackBarBehavior.floating),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
+          (route) => false,
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('탈퇴 처리 중 오류가 발생했습니다: $e'), behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
   }
 
   /// 전체 데이터 백업 내보내기 (JSON Export)
@@ -326,16 +425,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _pickDailyBriefingTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _dailyBriefingTime,
+    final now = DateTime.now();
+    final currentDt = DateTime(now.year, now.month, now.day, _dailyBriefingTime.hour, _dailyBriefingTime.minute);
+    final picked = await showCommonDateTimePickerModal(
+      context,
+      initialDateTime: currentDt,
+      isAllDay: false,
+      showAllDayToggle: false,
+      title: '하루 브리핑 알림 시간',
     );
     if (picked != null) {
-      setState(() => _dailyBriefingTime = picked);
+      final tod = TimeOfDay(hour: picked.hour, minute: picked.minute);
+      setState(() => _dailyBriefingTime = tod);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('⏰ 매일 아침 ${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}에 하루 브리핑 알림이 발송됩니다.'),
+          content: Text('⏰ 매일 아침 ${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}에 하루 브리핑 알림이 발송됩니다.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -386,6 +491,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 10),
             _buildQuickNavCard(
+              title: '저장공간 관리',
+              subtitle: '기록 데이터 사용량 확인 및 카테고리별 지난 일정 정리',
+              icon: Icons.pie_chart_outline_rounded,
+              iconColor: const Color(0xFF2563EB),
+              badgeText: '관리하기',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const StorageManagerScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            _buildQuickNavCard(
               title: '휴지통 (30일 복구 보존)',
               subtitle: '실수로 삭제된 모든 데이터를 30일간 안전하게 보관합니다.',
               icon: Icons.delete_outline_rounded,
@@ -410,6 +528,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 );
               },
             ),
+            const SizedBox(height: 10),
+            _buildQuickNavCard(
+              title: '앱 접근 권한 관리',
+              subtitle: '알림, 사진, 카메라, 캘린더, 간편 정산 연결, 마케팅 권한 설정',
+              icon: Icons.security_rounded,
+              iconColor: const Color(0xFF3182F6),
+              badgeText: '6개 권한',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AppPermissionScreen(isSettingsMode: true),
+                  ),
+                );
+              },
+            ),
             const SizedBox(height: 24),
 
             // 2. 계정 및 외부 서비스 연동
@@ -427,17 +560,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('고유 유저 식별 코드', style: TextStyle(fontSize: 13, color: AppColors.protoSubtitle, fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 4),
-                            Text(_userUniqueCode, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.protoHeading, letterSpacing: 0.5)),
-                          ],
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('고유 유저 식별 코드', style: TextStyle(fontSize: 13, color: AppColors.protoSubtitle, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 4),
+                          Text(_userUniqueCode, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.protoHeading, letterSpacing: 0.5)),
+                        ],
                       ),
-                      const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: _copyUserCode,
                         icon: const Icon(Icons.copy_rounded, size: 14),
@@ -452,15 +582,81 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                   const Divider(height: 24, color: Color(0xFFF3F4F6)),
-                  // 좁은 폰에서는 칩이 다음 줄로
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  Row(
                     children: [
                       _buildSocialChip('카카오', '연동됨', const Color(0xFFFEE500), Colors.black87),
+                      const SizedBox(width: 8),
                       _buildSocialChip('구글', '연동됨', const Color(0xFFEA4335), Colors.white),
+                      const SizedBox(width: 8),
+                      _buildSocialChip('애플', '연동됨', Colors.black, Colors.white),
+                      const SizedBox(width: 8),
                       _buildSocialChip('네이버', '미연동', const Color(0xFFE5E7EB), const Color(0xFF6B7280)),
                     ],
+                  ),
+                  const Divider(height: 24, color: Color(0xFFF3F4F6)),
+                  Builder(
+                    builder: (context) {
+                      final currentUser = ref.watch(currentUserProvider);
+                      final email = currentUser?.email ?? currentUser?.displayName;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  currentUser != null ? '로그인된 계정' : '게스트 모드',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.protoSubtitle, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  email ?? '로컬 세션 이용 중',
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.protoHeading),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (currentUser != null) ...[
+                            OutlinedButton(
+                              onPressed: _handleSignOut,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.protoSubtitle,
+                                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              child: const Text('로그아웃', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: _handleDeleteAccount,
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFFE11D48),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              ),
+                              child: const Text('회원 탈퇴', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                            ),
+                          ] else ...[
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF007AFF),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              child: const Text('로그인 연동', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -710,9 +906,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Expanded(
-                            child: Text('아침 브리핑 알림 시각', style: TextStyle(fontSize: 13, color: AppColors.protoSubtitle, fontWeight: FontWeight.w600)),
-                          ),
+                          const Text('아침 브리핑 알림 시각', style: TextStyle(fontSize: 13, color: AppColors.protoSubtitle, fontWeight: FontWeight.w600)),
                           Row(
                             children: [
                               Text(

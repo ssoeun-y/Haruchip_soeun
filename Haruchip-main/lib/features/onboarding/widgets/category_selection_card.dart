@@ -1,24 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
 import '../models/onboarding_category.dart';
 
-/// 온보딩 카테고리 선택 화면의 카드 1개.
-///
-/// haruchip_app.html `onboardingStep === 2`의 카드 마크업을 그대로 재현한다:
-/// ```html
-/// <div class="p-4 rounded-2xl border-2 ... flex flex-col items-center
-///      justify-center space-y-2
-///      ${isSelected ? 'border-yellow-400 bg-yellow-50 text-amber-900
-///                      font-bold shadow-sm'
-///                   : 'border-gray-100 bg-white text-gray-600'}">
-///     <span class="text-2xl">${emoji}</span>
-///     <span class="text-sm">${label}</span>
-/// </div>
-/// ```
-/// 선택 시 체크 배지 없이 테두리/배경/텍스트 색과 미세한 그림자만으로
-/// 선택 상태를 표현한다(§5/§6 프로토타입 재현 규칙).
+/// 온보딩 카테고리 선택 카드 (햅틱 피드백 & 파스텔 하이라이트 테두리)
 class CategorySelectionCard extends StatelessWidget {
   const CategorySelectionCard({
     super.key,
@@ -31,56 +17,102 @@ class CategorySelectionCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  void _handleTap() {
+    HapticFeedback.lightImpact();
+    onTap();
+  }
+
+  Color _getPastelHighlightColor() {
+    switch (category.key) {
+      case 'couple':
+        return const Color(0xFFFF7A9C);
+      case 'wedding':
+        return const Color(0xFFFF9EAA);
+      case 'baby':
+        return const Color(0xFFFBBF24);
+      case 'military':
+        return const Color(0xFF34D399);
+      case 'exam':
+        return const Color(0xFF60A5FA);
+      case 'meeting':
+        return const Color(0xFF818CF8);
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final highlightColor = _getPastelHighlightColor();
+
     return Semantics(
       button: true,
       selected: selected,
       label: '${category.labelKo} 카테고리',
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        onTap: _handleTap,
+        borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(16),
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.protoCardSelectedBg
-                : AppColors.protoCardBg,
-            borderRadius: BorderRadius.circular(16),
+                ? highlightColor.withValues(alpha: 0.08)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: selected
-                  ? AppColors.protoCardSelectedBorder
-                  : AppColors.protoCardBorder,
-              width: 2,
+                  ? highlightColor
+                  : const Color(0xFFF2F4F6),
+              width: selected ? 2.0 : 1.2,
             ),
-            // 원본의 `shadow-sm`(아주 옅은 회색 그림자) 재현 — 앰버 글로우가
-            // 아니라 중립 톤이다.
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
+                      color: highlightColor.withValues(alpha: 0.22),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ]
-                : null,
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(category.emoji, style: const TextStyle(fontSize: 24)),
-              const SizedBox(height: 8),
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? highlightColor.withValues(alpha: 0.15)
+                      : const Color(0xFFF9FAFB),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  category.emoji,
+                  style: const TextStyle(fontSize: 22),
+                ),
+              ),
+              const SizedBox(height: 10),
               Text(
                 category.labelKo,
                 textAlign: TextAlign.center,
                 style: AppTypography.cardLabel.copyWith(
-                  fontSize: 14,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  fontSize: 13.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected
-                      ? AppColors.protoCardSelectedText
-                      : AppColors.protoCardText,
+                      ? const Color(0xFF191F28)
+                      : const Color(0xFF4B5563),
+                  letterSpacing: -0.2,
                 ),
               ),
             ],

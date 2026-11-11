@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/widgets/haru_calendar_picker.dart';
+import '../../shared/widgets/common_date_time_picker.dart';
 import '../models/schedule_room.dart';
 
 /// 모임 투표 생성 및 수정 다이얼로그 (마감 기한, 복수 선택, 익명 투표 지원)
@@ -107,11 +107,12 @@ class _AddRoomVoteDialogState extends State<_AddRoomVoteDialog> {
   }
 
   Future<void> _pickDeadlineDate() async {
-    final picked = await showHaruDatePicker(
+    final picked = await showCommonDatePickerModal(
       context,
       initialDate: _deadlineDate ?? DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      title: '투표 마감 날짜 선택',
     );
     if (picked != null) {
       setState(() {
@@ -121,13 +122,24 @@ class _AddRoomVoteDialogState extends State<_AddRoomVoteDialog> {
   }
 
   Future<void> _pickDeadlineTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _deadlineTime,
+    final curDate = _deadlineDate ?? DateTime.now().add(const Duration(days: 1));
+    final currentDt = DateTime(
+      curDate.year,
+      curDate.month,
+      curDate.day,
+      _deadlineTime.hour,
+      _deadlineTime.minute,
+    );
+    final picked = await showCommonDateTimePickerModal(
+      context,
+      initialDateTime: currentDt,
+      isAllDay: false,
+      showAllDayToggle: false,
+      title: '투표 마감 시간 선택',
     );
     if (picked != null) {
       setState(() {
-        _deadlineTime = picked;
+        _deadlineTime = TimeOfDay(hour: picked.hour, minute: picked.minute);
       });
     }
   }

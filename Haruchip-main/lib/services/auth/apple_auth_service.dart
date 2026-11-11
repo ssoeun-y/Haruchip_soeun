@@ -113,6 +113,14 @@ class AppleAuthService {
     return Future.value();
   }
 
+  /// Apple 심사 기준 준수를 위한 계정 탈퇴/삭제 파이프라인 (Guideline 5.1.1(v))
+  Future<void> deleteAccount() async {
+    final user = fb_auth.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await user.delete();
+    }
+  }
+
   String _generateNonce([int length = 32]) {
     const charset =
         '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';

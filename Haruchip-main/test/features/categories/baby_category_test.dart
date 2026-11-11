@@ -152,4 +152,133 @@ void main() {
       expect(restored.growthRecords.first.heightCm, 72.5);
     });
   });
+
+  group('Baby Category - KCDA Vaccine Dose Target Date Calculation', () {
+    const controller = BabyCategoryController();
+    final birthDate = DateTime(2026, 3, 1);
+
+    test('BCG recommendation is within 4 weeks of birth', () {
+      final bcg = kDefaultVaccineDoses.firstWhere((v) => v.name.contains('BCG'));
+      final target = controller.calculateVaccineDoseTargetDate(birthDate, bcg);
+      // Expected: birthDate + 28 days = March 29, 2026
+      expect(target, DateTime(2026, 3, 29));
+    });
+
+    test('B형간염 1차 is birth day, 2차 is 1 month later, 3차 is 6 months later', () {
+      final dose1 = kDefaultVaccineDoses.firstWhere((v) => v.name.contains('B형간염 1차'));
+      final dose2 = kDefaultVaccineDoses.firstWhere((v) => v.name.contains('B형간염 2차'));
+      final dose3 = kDefaultVaccineDoses.firstWhere((v) => v.name.contains('B형간염 3차'));
+
+      expect(controller.calculateVaccineDoseTargetDate(birthDate, dose1), birthDate);
+      expect(controller.calculateVaccineDoseTargetDate(birthDate, dose2), DateTime(2026, 4, 1));
+      expect(controller.calculateVaccineDoseTargetDate(birthDate, dose3), DateTime(2026, 9, 1));
+    });
+
+    test('MMR 1차 is at 12 months (1 year later)', () {
+      final mmr = kDefaultVaccineDoses.firstWhere((v) => v.name.contains('MMR 1차'));
+      expect(controller.calculateVaccineDoseTargetDate(birthDate, mmr), DateTime(2027, 3, 1));
+    });
+  });
+
+  group('Baby Category - Growth Records CRUD', () {
+    test('supports adding, updating, and deleting growth records', () {
+      var profile = BabyProfile(
+        name: '하임이',
+        birthDate: DateTime(2026, 1, 1),
+        growthRecords: const [],
+      );
+
+      // Create
+      final record1 = GrowthRecord(
+        id: 'rec-1',
+        date: DateTime(2026, 5, 1),
+        heightCm: 65.0,
+        weightKg: 7.2,
+      );
+      profile = profile.copyWith(growthRecords: [...profile.growthRecords, record1]);
+      expect(profile.growthRecords.length, 1);
+      expect(profile.growthRecords.first.heightCm, 65.0);
+
+      // Update
+      final updatedRecord1 = record1.copyWith(heightCm: 66.5, weightKg: 7.5);
+      profile = profile.copyWith(
+        growthRecords: profile.growthRecords
+            .map((r) => r.id == record1.id ? updatedRecord1 : r)
+            .toList(),
+      );
+      expect(profile.growthRecords.length, 1);
+      expect(profile.growthRecords.first.heightCm, 66.5);
+      expect(profile.growthRecords.first.weightKg, 7.5);
+
+      // Delete
+      profile = profile.copyWith(
+        growthRecords: profile.growthRecords.where((r) => r.id != record1.id).toList(),
+      );
+      expect(profile.growthRecords.isEmpty, isTrue);
+    });
+  });
+
+  group('Baby Category - Section Visibility and Reordering', () {
+    test('hidden sections can be filtered and toggled', () {
+      final allSections = [
+        'careQuickBar',
+        'vaccineTimeline',
+        'healthCheckup',
+        'growthRecords',
+        'countUpList',
+        'dDayList',
+      ];
+      final hidden = {'careQuickBar', 'healthCheckup'};
+
+      final visibleSections = allSections.where((s) => !hidden.contains(s)).toList();
+      expect(visibleSections.contains('careQuickBar'), isFalse);
+      expect(visibleSections.contains('healthCheckup'), isFalse);
+      expect(visibleSections.contains('growthRecords'), isTrue);
+      expect(visibleSections.contains('vaccineTimeline'), isTrue);
+
+      // Restore section
+      hidden.remove('careQuickBar');
+      final updatedVisible = allSections.where((s) => !hidden.contains(s)).toList();
+      expect(updatedVisible.contains('careQuickBar'), isTrue);
+    });
+
+    test('reordering sections updates order index', () {
+      final sections = [
+        'careQuickBar',
+        'vaccineTimeline',
+        'healthCheckup',
+        'growthRecords',
+      ];
+
+      // Move growthRecords to top
+      final item = sections.removeAt(3);
+      sections.insert(0, item);
+
+      expect(sections.first, 'growthRecords');
+      expect(sections[1], 'careQuickBar');
+    });
+  });
+
+  group('D-Day Timed Countdown & Expiration Logic', () {
+    test('D-Day with time today calculates remaining hours and minutes', () {
+      final now = DateTime(2026, 10, 26, 9, 30);
+      final targetTime = DateTime(2026, 10, 26, 15, 0); // 5h 30m left
+
+      final diff = targetTime.difference(now);
+      final hours = diff.inHours.toString().padLeft(2, '0');
+      final mins = (diff.inMinutes % 60).toString().padLeft(2, '0');
+      final countdownText = '$hours:$mins 남음';
+
+      expect(countdownText, '05:30 남음');
+      expect(diff.isNegative, isFalse);
+    });
+
+    test('D-Day with time already elapsed is marked expired and not positive D+1', () {
+      final now = DateTime(2026, 10, 26, 16, 0);
+      final targetTime = DateTime(2026, 10, 26, 15, 0); // 1 hour ago
+
+      final isExpired = targetTime.isBefore(now);
+      expect(isExpired, isTrue);
+    });
+  });
 }

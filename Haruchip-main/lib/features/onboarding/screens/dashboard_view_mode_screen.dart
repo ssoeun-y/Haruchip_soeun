@@ -1,33 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
 import '../data/dashboard_view_mode_options.dart';
 import '../providers/dashboard_view_mode_provider.dart';
 import '../widgets/dashboard_view_mode_card.dart';
+import '../widgets/toss_funnel_components.dart';
 import 'onboarding_complete_screen.dart';
 
-/// 온보딩 플로우의 "대시보드 뷰모드" 단계.
-///
-/// 전체 온보딩 순서(CLAUDE.md §8, 재배선 반영):
-/// 스플래시 → 권한요청 → 로그인 → 카테고리 선택(다중) →
-/// **대시보드 뷰모드** → 완료화면 → 메인셸
-///
-/// haruchip_app.html `renderOnboardingHTML()`의 `onboardingStep === 3`
-/// 분기를 그대로 재현한다(§5/§6). 원본엔 상단 진행바가 없고 대신
-/// "STEP 2/3" 라벨만 있다.
-///
-/// 카테고리 선택/캘린더 연동 선택과 달리 이건 단일 선택(라디오형)이라
-/// 하나를 반드시 골라야 다음 단계로 진행할 수 있다. [onNext]를 넘기면
-/// (주로 테스트) 그 콜백을 대신 호출하고, 넘기지 않으면 다음 단계인
-/// [OnboardingCompleteScreen]으로 실제 이동한다.
-///
-/// NOTE: 이전에는 다음 단계가 [WidgetGuideScreen](위젯 안내)이었지만,
-/// 온보딩 재배선(스플래시 → 로그인 → 카테고리선택 → 대시보드뷰모드 →
-/// 완료화면 → 메인셸)에 따라 캘린더연동/위젯안내 두 단계는 온보딩
-/// 흐름에서 빠지고 설정 화면 용도로 재활용된다 — 이 화면의 다음 단계는
-/// 이제 [OnboardingCompleteScreen]이다.
+/// 토스(Toss) 스타일 온보딩 퍼널 [Step 3: 대시보드 보기 방식 선택 (미리보기 연동)]
 class DashboardViewModeScreen extends ConsumerWidget {
   const DashboardViewModeScreen({super.key, this.onNext});
 
@@ -50,44 +31,45 @@ class DashboardViewModeScreen extends ConsumerWidget {
         return;
       }
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const OnboardingCompleteScreen()),
+        SlideFadePageRoute(page: const OnboardingCompleteScreen()),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppColors.protoBackground,
+      backgroundColor: const Color(0xFFF9FAFB),
       body: SafeArea(
         child: Column(
           children: [
+            TossStepIndicator(
+              currentStep: 3,
+              totalSteps: 3,
+              onBack: () => Navigator.maybePop(context),
+            ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'STEP 2/3',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.protoStepLabel,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '대시보드 보기 방식 선택',
+                      '대시보드를 어떤 스타일로 볼까요?',
                       style: AppTypography.heading1.copyWith(
-                        color: AppColors.protoHeading,
+                        color: const Color(0xFF191F28),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '메인 화면에서 정보를 어떤 형태로 확인할까요?',
+                      '나에게 가장 보기 편한 방식을 골라보세요. 설정에서 언제든 변경할 수 있어요.',
                       style: AppTypography.bodyMuted.copyWith(
-                        color: AppColors.protoSubtitle,
+                        color: const Color(0xFF8B95A1),
+                        fontSize: 13.5,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     for (final option in kDashboardViewModeOptions) ...[
                       DashboardViewModeCard(
                         option: option,
@@ -96,11 +78,19 @@ class DashboardViewModeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                     ],
+
+                    const SizedBox(height: 16),
+
+                    // 실시간 목업 (미리보기 박스)
+                    _buildInteractiveMockupBox(selectedKey),
+
+                    const SizedBox(height: 80),
                   ],
                 ),
               ),
             ),
-            _BottomCta(
+            GlassFloatingButton(
+              label: canProceed ? '다음으로' : '뷰모드를 선택해주세요',
               enabled: canProceed,
               onPressed: handleNext,
             ),
@@ -109,49 +99,292 @@ class DashboardViewModeScreen extends ConsumerWidget {
       ),
     );
   }
-}
 
-class _BottomCta extends StatelessWidget {
-  const _BottomCta({
-    required this.enabled,
-    required this.onPressed,
-  });
-
-  final bool enabled;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: enabled ? onPressed : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.protoButtonBg,
-              disabledBackgroundColor: AppColors.surfaceMuted,
-              foregroundColor: AppColors.protoButtonText,
-              disabledForegroundColor: AppColors.textDisabled,
-              // 원본의 `shadow-lg`(뚜렷한 그림자) 재현 — 비활성 상태는
-              // 원본에 없는 우리 쪽 정책이라 그림자 없이 눌러둔다.
-              elevation: enabled ? 6 : 0,
-              shadowColor: Colors.black.withValues(alpha: 0.25),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+  /// 실시간 목업 미리보기 박스 위젯
+  Widget _buildInteractiveMockupBox(String? selectedKey) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE5E8EB), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F3FF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.phone_iphone_rounded,
+                  size: 16,
+                  color: Color(0xFF3182F6),
+                ),
               ),
-            ),
-            child: Text(
-              enabled ? '다음으로' : '뷰모드를 선택해주세요',
-              style: AppTypography.button.copyWith(
-                color: enabled ? AppColors.protoButtonText : AppColors.textDisabled,
+              const SizedBox(width: 8),
+              Text(
+                selectedKey == 'box'
+                    ? '실시간 미리보기 : 칩 모아보기 뷰'
+                    : '실시간 미리보기 : 타임라인 뷰',
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF333D4B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: selectedKey == 'box'
+                ? _buildChipsMockup()
+                : _buildTimelineMockup(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 1) 타임라인 뷰 실시간 목업
+  Widget _buildTimelineMockup() {
+    return Column(
+      key: const ValueKey('timeline_mockup'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTimelineNode(
+          badgeText: 'D-DAY',
+          badgeColor: const Color(0xFFFF7A9C),
+          title: '우리 사랑한 지 520일째 ❤️',
+          subtext: '처음 만난 날부터 함께 걸어온 소중한 시간',
+          isLast: false,
+        ),
+        _buildTimelineNode(
+          badgeText: 'D-14',
+          badgeColor: const Color(0xFF60A5FA),
+          title: '정보처리기사 실기 시험 📚',
+          subtext: '목표 달성을 위한 카운트다운',
+          isLast: false,
+        ),
+        _buildTimelineNode(
+          badgeText: 'D-45',
+          badgeColor: const Color(0xFF34D399),
+          title: '정기 휴가 출발 🏖️',
+          subtext: '복무율 68.4% 달성 기념 휴가',
+          isLast: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimelineNode({
+    required String badgeText,
+    required Color badgeColor,
+    required String title,
+    required String subtext,
+    required bool isLast,
+  }) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: badgeColor.withValues(alpha: 0.4),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: const Color(0xFFE5E8EB),
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF2F4F6)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF191F28),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtext,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF8B95A1),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// 2) 칩 모아보기 뷰 실시간 목업
+  Widget _buildChipsMockup() {
+    return GridView.count(
+      key: const ValueKey('chips_mockup'),
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 1.45,
+      children: [
+        _buildMiniChip(
+          emoji: '❤️',
+          title: '우리 사랑한 지',
+          dDay: 'D+520',
+          bgColor: const Color(0xFFFFF0F3),
+          borderColor: const Color(0xFFFFCCD5),
+          textColor: const Color(0xFF4A4A4A),
         ),
+        _buildMiniChip(
+          emoji: '📚',
+          title: '시험 / 자격증',
+          dDay: 'D-14',
+          bgColor: const Color(0xFFEFF6FF),
+          borderColor: const Color(0xFFDBEAFE),
+          textColor: const Color(0xFF1E3A8A),
+        ),
+        _buildMiniChip(
+          emoji: '🎖️',
+          title: '군대 복무율',
+          dDay: '68.4%',
+          bgColor: const Color(0xFFF0FDF4),
+          borderColor: const Color(0xFFDCFCE7),
+          textColor: const Color(0xFF14532D),
+        ),
+        _buildMiniChip(
+          emoji: '👶',
+          title: '아기 성장',
+          dDay: '12개월차',
+          bgColor: const Color(0xFFFEFCE8),
+          borderColor: const Color(0xFFFEF08A),
+          textColor: const Color(0xFF713F12),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniChip({
+    required String emoji,
+    required String title,
+    required String dDay,
+    required Color bgColor,
+    required Color borderColor,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 13)),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: textColor.withValues(alpha: 0.8),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            dDay,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+        ],
       ),
     );
   }

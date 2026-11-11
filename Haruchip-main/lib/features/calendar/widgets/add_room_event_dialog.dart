@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
-import '../../shared/widgets/haru_calendar_picker.dart';
+import '../../shared/widgets/common_date_time_picker.dart';
 import '../models/schedule_room.dart';
 
 /// 모임 공유 일정 추가 다이얼로그
@@ -64,41 +64,36 @@ class _AddRoomEventDialogState extends State<_AddRoomEventDialog> {
     super.dispose();
   }
 
-  void _openDatePicker() {
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              HaruCalendarPicker(
-                initialDate: _selectedDate,
-                firstDate: DateTime(2020, 1, 1),
-                lastDate: DateTime(2035, 12, 31),
-                onDateChanged: (picked) {
-                  setState(() => _selectedDate = picked);
-                  Navigator.of(dialogCtx).pop();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+  void _openDatePicker() async {
+    final picked = await showCommonDatePickerModal(
+      context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+      title: '일정 날짜 선택',
     );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
   }
 
   Future<void> _openTimePicker() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime,
+    final currentDt = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
     );
-    if (picked != null) {
-      setState(() => _selectedTime = picked);
+    final picked = await showCommonDateTimePickerModal(
+      context,
+      initialDateTime: currentDt,
+      isAllDay: false,
+      showAllDayToggle: false,
+      title: '일정 시간 선택',
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedTime = TimeOfDay(hour: picked.hour, minute: picked.minute));
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show Color;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../design_system/colors.dart';
+import '../../../services/notification/local_push_notification_service.dart';
 import '../../../services/storage/local_store.dart';
 import '../../categories/logic/repeat_rule.dart';
 import '../data/plan_mock_data.dart';
@@ -32,14 +33,19 @@ class PlanListNotifier extends Notifier<List<PlanItem>> {
 
   void addItem(PlanItem item) {
     state = _sortedByDate([...state, item]);
+    LocalPushNotificationService.instance.schedulePlanReminder(item);
   }
 
   void addItems(List<PlanItem> items) {
     state = _sortedByDate([...state, ...items]);
+    for (final item in items) {
+      LocalPushNotificationService.instance.schedulePlanReminder(item);
+    }
   }
 
   void removeItem(String id) {
     state = state.where((item) => item.id != id).toList();
+    LocalPushNotificationService.instance.cancelReminder(id);
   }
 
   void updateItem(PlanItem updatedItem) {
@@ -47,6 +53,7 @@ class PlanListNotifier extends Notifier<List<PlanItem>> {
       for (final item in state)
         if (item.id == updatedItem.id) updatedItem else item
     ]);
+    LocalPushNotificationService.instance.schedulePlanReminder(updatedItem);
   }
 
   /// 계획 카테고리 칸반 보드(§5.7)에서 카드를 다른 상태로 옮길 때 쓴다.

@@ -178,6 +178,19 @@ class BabyCategoryController {
     return DateTime(targetYear, targetMonth, safeDay);
   }
 
+  /// 질병관리청(KCDA) 표준 가이드라인에 맞춘 세부 백신별 권장일자 산출
+  DateTime calculateVaccineDoseTargetDate(DateTime birthDate, VaccineDose dose) {
+    if (dose.id == 'vac-bcg-1') {
+      // BCG: 생후 4주 이내 (28일)
+      return birthDate.add(const Duration(days: 28));
+    }
+    if (dose.id == 'vac-hepb-1') {
+      // B형간염 1차: 출생 당일 (24시간 이내)
+      return birthDate;
+    }
+    return calculateVaccineTargetDate(birthDate, dose.recommendedAgeMonths);
+  }
+
   /// 5. 성장 마일스톤 D-Day 리스트 생성
   List<BabyMilestoneInfo> getGrowthMilestones(DateTime birthDate, [DateTime? relativeTo]) {
     final now = relativeTo ?? DateTime.now();

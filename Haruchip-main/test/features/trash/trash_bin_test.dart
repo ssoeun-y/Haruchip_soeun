@@ -206,5 +206,48 @@ void main() {
 
       expect(find.textContaining('영구 삭제되었습니다'), findsOneWidget);
     });
+
+    testWidgets('supports multi-selection mode with selective restore and batch delete', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: TrashBinScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Enter selection mode
+      final selectionToggle = find.text('선택 관리');
+      expect(selectionToggle, findsOneWidget);
+      await tester.tap(selectionToggle);
+      await tester.pumpAndSettle();
+
+      // Checkboxes appear
+      final checkboxes = find.byType(Checkbox);
+      expect(checkboxes, findsWidgets);
+
+      // Select first item
+      await tester.tap(checkboxes.at(1));
+      await tester.pumpAndSettle();
+
+      // Bottom bar appears
+      expect(find.textContaining('1개 복원하기'), findsOneWidget);
+      expect(find.textContaining('1개 완전 삭제'), findsOneWidget);
+
+      // Tap 1개 완전 삭제
+      await tester.tap(find.textContaining('1개 완전 삭제'));
+      await tester.pumpAndSettle();
+
+      // Warning dialog appears with exact mandatory string
+      expect(find.text('선택 항목 완전 삭제'), findsOneWidget);
+      expect(find.textContaining('영구 삭제 시 복원이 불가능합니다. 계속하시겠습니까?'), findsOneWidget);
+
+      // Confirm
+      await tester.tap(find.widgetWithText(ElevatedButton, '완전 삭제'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('영구 삭제되었습니다'), findsOneWidget);
+    });
   });
 }

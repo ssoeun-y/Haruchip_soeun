@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'category_skin_theme.dart';
+
 /// 배경 유형
 enum BackgroundType {
   singleColor,
@@ -286,6 +288,17 @@ class CategoryModel {
       : '#FFF0F5';
   String? get backgroundImageUrl => background.imageUrl;
   bool get showVisualCard => metadata?['showVisualCard'] as bool? ?? true;
+
+  /// Y2K 블로그형 스킨/테마 게터
+  CategorySkinTheme? get skinTheme {
+    final raw = metadata?['skinTheme'];
+    if (raw is Map<String, dynamic>) {
+      return CategorySkinTheme.fromJson(raw);
+    } else if (raw is Map) {
+      return CategorySkinTheme.fromJson(Map<String, dynamic>.from(raw));
+    }
+    return null;
+  }
 
   CategoryModel copyWith({
     String? id,

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
+import '../../categories/models/category.dart';
+import '../../categories/providers/category_provider.dart';
 import 'package:haruchip/features/shared/widgets/add_event_bottom_sheet.dart';
 import '../../onboarding/screens/calendar_integration_screen.dart';
 import '../models/calendar_event.dart';
@@ -16,16 +18,19 @@ class CalendarScreen extends ConsumerWidget {
 
   static const List<({String? key, String label, Color color, String emoji})> _kCategoryFilters = [
     (key: null, label: '전체', color: Color(0xFF1E293B), emoji: '🌈'),
-    (key: 'plan', label: '내 일정', color: Color(0xFF007AFF), emoji: '📝'),
-    (key: 'couple', label: '커플', color: Color(0xFFFF2D55), emoji: '❤️'),
-    (key: 'solo', label: '솔로', color: Color(0xFF9333EA), emoji: '🌟'),
-    (key: 'fandom', label: '덕질', color: Color(0xFFF59E0B), emoji: '⭐'),
-    (key: 'group', label: '모임', color: Color(0xFF10B981), emoji: '👥'),
-    (key: 'exam', label: '시험', color: Color(0xFF4F46E5), emoji: '📚'),
-    (key: 'birthday', label: '생일', color: Color(0xFFEC4899), emoji: '🎂'),
-    (key: 'baby', label: '아기', color: Color(0xFFF59E0B), emoji: '👶'),
-    (key: 'pet', label: '반려동물', color: Color(0xFFD97706), emoji: '🐾'),
-    (key: 'military', label: '군대', color: Color(0xFF556B2F), emoji: '🎖️'),
+    (key: 'plan', label: '내 일정', color: Color(0xFF60A5FA), emoji: '📝'),
+    (key: 'couple', label: '커플', color: Color(0xFFFF8DA1), emoji: '❤️'),
+    (key: 'solo', label: '솔로', color: Color(0xFFC084FC), emoji: '🌟'),
+    (key: 'fandom', label: '덕질', color: Color(0xFFFBBF24), emoji: '⭐'),
+    (key: 'group', label: '모임', color: Color(0xFF34D399), emoji: '👥'),
+    (key: 'exam', label: '시험', color: Color(0xFF818CF8), emoji: '📚'),
+    (key: 'birthday', label: '생일', color: Color(0xFFF472B6), emoji: '🎂'),
+    (key: 'baby', label: '아기', color: Color(0xFFFDE047), emoji: '👶'),
+    (key: 'pet', label: '반려동물', color: Color(0xFFFB923C), emoji: '🐾'),
+    (key: 'military', label: '군대', color: Color(0xFFA3E635), emoji: '🎖️'),
+    (key: 'wedding', label: '결혼', color: Color(0xFFFDA4AF), emoji: '💍'),
+    (key: 'travel', label: '여행', color: Color(0xFF38BDF8), emoji: '✈️'),
+    (key: 'hobby', label: '취미', color: Color(0xFF6EE7B7), emoji: '🎨'),
   ];
 
   Color _parseColor(String hex) {
@@ -46,6 +51,20 @@ class CalendarScreen extends ConsumerWidget {
     final events = ref.watch(eventsForDateProvider(selectedDate));
     final allEvents = ref.watch(allCalendarEventsProvider);
     final notifier = ref.read(calendarSelectionProvider.notifier);
+
+    final userCategories = ref.watch(categoryListProvider);
+    final List<({String? key, String label, Color color, String emoji})> dynamicFilters = [
+      (key: null, label: '전체', color: const Color(0xFF1E293B), emoji: '🌈'),
+      if (userCategories.isNotEmpty)
+        ...userCategories.map((c) => (
+              key: c.categoryKey.isNotEmpty ? c.categoryKey : c.id,
+              label: c.name,
+              color: colorFromHex(c.colorHex),
+              emoji: c.emoji,
+            ))
+      else
+        ..._kCategoryFilters.where((f) => f.key != null),
+    ];
 
     return Scaffold(
       backgroundColor: AppColors.protoBackground,
@@ -188,7 +207,7 @@ class CalendarScreen extends ConsumerWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    for (final filter in _kCategoryFilters)
+                    for (final filter in dynamicFilters)
                       Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: InkWell(

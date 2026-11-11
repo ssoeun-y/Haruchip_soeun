@@ -5,13 +5,14 @@ import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
 import '../../couple/models/couple_relationship.dart';
 import '../../couple/providers/couple_provider.dart';
-import '../../couple/widgets/couple_relationship_setup_sheet.dart';
 import '../../plan/models/plan_item.dart';
 import '../../plan/providers/plan_provider.dart';
 import '../../shared/widgets/add_event_bottom_sheet.dart';
+import '../../shared/widgets/haru_calendar_picker.dart';
 import '../models/category.dart';
 import '../providers/category_provider.dart';
 import '../widgets/category_edit_modal.dart';
+import '../widgets/unified_category_top_card.dart';
 
 class CoupleCategoryDetailScreen extends ConsumerStatefulWidget {
   const CoupleCategoryDetailScreen({
@@ -59,8 +60,324 @@ class _CoupleCategoryDetailScreenState extends ConsumerState<CoupleCategoryDetai
     }
   }
 
-  Future<void> _showRelationshipSetupModal() =>
-      showCoupleRelationshipSetupSheet(context, ref);
+  Future<void> _showRelationshipSetupModal() async {
+    final couple = ref.read(coupleProvider);
+    DateTime tempStartDate = couple.startDate;
+    List<ReunionPeriod> tempReunions = couple.reunions.map((r) => r.copyWith()).toList();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final mediaQuery = MediaQuery.of(context);
+            // Calculate total days preview
+            final now = DateTime.now();
+            final totalElapsed = DateTime(now.year, now.month, now.day)
+                .difference(DateTime(tempStartDate.year, tempStartDate.month, tempStartDate.day))
+                .inDays;
+            final breakupDays = tempReunions.fold<int>(0, (sum, r) => sum + r.length.inDays);
+            final previewDays = (totalElapsed - breakupDays).clamp(0, 99999);
+
+            return Container(
+              height: mediaQuery.size.height * 0.88,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Drag Handle
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD1D1D6),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '만난 날 및 재회 설정',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.protoHeading),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(20),
+                      children: [
+                        // Calculated Preview Card
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF7F2),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFFFD4C2)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.favorite, color: Color(0xFFFF7A59), size: 28),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('현재 연애 일수', style: TextStyle(fontSize: 12, color: Color(0xFF8A7F78))),
+                                  Text(
+                                    '${previewDays + 1}일째',
+                                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFFFF7A59)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Section 1: 처음 만난 날
+                        const Text('처음 만난 날 (시작일)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showHaruDatePicker(
+                              context,
+                              initialDate: tempStartDate,
+                              firstDate: DateTime(1900),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null) {
+                              setModalState(() => tempStartDate = picked);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF2F2F7),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${tempStartDate.year}.${tempStartDate.month.toString().padLeft(2, '0')}.${tempStartDate.day.toString().padLeft(2, '0')}',
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF007AFF)),
+                                ),
+                                const Icon(Icons.calendar_today_rounded, size: 18, color: Color(0xFF007AFF)),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Section 2: 재회 및 이별 기간 목록
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              '이별 / 재회 이력',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
+                            TextButton.icon(
+                              onPressed: () {
+                                setModalState(() {
+                                  tempReunions.add(
+                                    ReunionPeriod(
+                                      breakupDate: tempStartDate.add(const Duration(days: 100)),
+                                      reuniteDate: tempStartDate.add(const Duration(days: 130)),
+                                    ),
+                                  );
+                                });
+                              },
+                              icon: const Icon(Icons.add_circle_outline, size: 16, color: Color(0xFF007AFF)),
+                              label: const Text('+ 재회 추가', style: TextStyle(color: Color(0xFF007AFF), fontWeight: FontWeight.bold, fontSize: 13)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          '이별했던 기간만큼 총 연애 일수에서 정확히 제외됩니다.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
+
+                        if (tempReunions.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAFAFA),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFEEEEEE)),
+                            ),
+                            child: const Text('등록된 이별/재회 기간이 없습니다.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          )
+                        else
+                          for (int i = 0; i < tempReunions.length; i++)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9F9FB),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFFE5E5EA)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('기간 #${i + 1}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF3A3A3C))),
+                                      IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        icon: const Icon(Icons.remove_circle_outline, color: Color(0xFFEF4444), size: 18),
+                                        onPressed: () {
+                                          setModalState(() {
+                                            tempReunions.removeAt(i);
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      // Breakup date button
+                                      Expanded(
+                                        child: InkWell(
+                                          onTap: () async {
+                                            final picked = await showHaruDatePicker(
+                                              context,
+                                              initialDate: tempReunions[i].breakupDate,
+                                              firstDate: DateTime(1900),
+                                              lastDate: DateTime(2100),
+                                            );
+                                            if (picked != null) {
+                                              setModalState(() {
+                                                tempReunions[i] = tempReunions[i].copyWith(breakupDate: picked);
+                                              });
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: const Color(0xFFD1D1D6)),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text('이별일', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                                Text(
+                                                  '${tempReunions[i].breakupDate.year}.${tempReunions[i].breakupDate.month.toString().padLeft(2, '0')}.${tempReunions[i].breakupDate.day.toString().padLeft(2, '0')}',
+                                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 6),
+                                        child: Text('~', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      ),
+                                      // Reunite date button
+                                      Expanded(
+                                        child: InkWell(
+                                          onTap: () async {
+                                            final picked = await showHaruDatePicker(
+                                              context,
+                                              initialDate: tempReunions[i].reuniteDate ?? tempReunions[i].breakupDate.add(const Duration(days: 30)),
+                                              firstDate: DateTime(1900),
+                                              lastDate: DateTime(2100),
+                                            );
+                                            if (picked != null) {
+                                              setModalState(() {
+                                                tempReunions[i] = tempReunions[i].copyWith(reuniteDate: picked);
+                                              });
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: const Color(0xFFD1D1D6)),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text('재회일', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                                Text(
+                                                  tempReunions[i].reuniteDate != null
+                                                      ? '${tempReunions[i].reuniteDate!.year}.${tempReunions[i].reuniteDate!.month.toString().padLeft(2, '0')}.${tempReunions[i].reuniteDate!.day.toString().padLeft(2, '0')}'
+                                                      : '미재회 (현재 이별 중)',
+                                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                  // Bottom Submit Button
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF007AFF),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: () {
+                          ref.read(coupleProvider.notifier).updateRelationship(
+                                startDate: tempStartDate,
+                                reunions: tempReunions,
+                              );
+                          Navigator.pop(ctx);
+                        },
+                        child: const Text(
+                          '설정 완료',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _openEditModal() async {
     final updated = await showCategoryEditModal(
@@ -92,7 +409,6 @@ class _CoupleCategoryDetailScreenState extends ConsumerState<CoupleCategoryDetai
 
     final bgConfig = _category.background;
     final hasImage = bgConfig.type == BackgroundType.image && bgConfig.imageUrl != null;
-    final singleColor = bgConfig.colorValues.isNotEmpty ? colorFromHex(bgConfig.colorValues.first) : AppColors.protoCardBg;
 
     // Filter count-up items (N일째)
     final countUpItems = customItems.where((item) => item.displayMode == DdayDisplayMode.daysCount).toList();
@@ -173,128 +489,32 @@ class _CoupleCategoryDetailScreenState extends ConsumerState<CoupleCategoryDetai
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Top Custom Main Card
-                  GestureDetector(
-                    onTap: _showRelationshipSetupModal,
-                    child: Container(
-                      width: double.infinity,
-                      height: 220,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: bgConfig.type == BackgroundType.singleColor ? singleColor : null,
-                        gradient: bgConfig.type == BackgroundType.gradient && bgConfig.colorValues.length >= 2
-                            ? LinearGradient(colors: bgConfig.colorValues.map((h) => colorFromHex(h)).toList())
-                            : null,
-                        image: hasImage
-                            ? DecorationImage(
-                                image: bgConfig.imageUrl!.startsWith('http')
-                                    ? NetworkImage(bgConfig.imageUrl!) as ImageProvider
-                                    : AssetImage(bgConfig.imageUrl!),
-                                fit: BoxFit.cover,
-                                colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.2), BlendMode.darken),
-                              )
-                            : null,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: LayoutBuilder(
-                        builder: (context, cardConstraints) {
-                          final cWidth = cardConstraints.maxWidth;
-                          final cHeight = cardConstraints.maxHeight;
-                          final typo = _category.typography;
-                          final customTextColor = colorFromHex(typo.textColor);
+                  // 1. Top Custom Main Card (아기 카드와 1:1 통일된 네추럴 미니멀 폼 팩터)
+                  Builder(
+                    builder: (context) {
+                      final breakupDays = couple.reunions.fold<int>(0, (sum, r) => sum + r.length.inDays);
+                      final startDateStr = '시작일: ${couple.startDate.year}.${couple.startDate.month.toString().padLeft(2, '0')}.${couple.startDate.day.toString().padLeft(2, '0')}';
+                      final reunionStr = breakupDays > 0 ? '재회 기간 제외: $breakupDays일' : '연애 진행 중 ing';
 
-                          return Stack(
-                            children: [
-                              Align(
-                                alignment: typo.position.alignment,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20.0),
-                                  child: Opacity(
-                                    opacity: typo.opacity,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: switch (typo.position) {
-                                        TextPositionPreset.topLeft || TextPositionPreset.bottomLeft => CrossAxisAlignment.start,
-                                        TextPositionPreset.topRight || TextPositionPreset.bottomRight => CrossAxisAlignment.end,
-                                        _ => CrossAxisAlignment.center,
-                                      },
-                                      children: [
-                                        Text(
-                                          '${totalDays + 1}일째',
-                                          style: TextStyle(
-                                            fontFamily: typo.fontFamily,
-                                            fontSize: 34,
-                                            fontWeight: FontWeight.w800,
-                                            color: hasImage ? Colors.white : customTextColor,
-                                            shadows: hasImage ? const [Shadow(color: Colors.black45, blurRadius: 4)] : null,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Flexible(
-                                              child: Text(
-                                              '${couple.startDate.year}.${couple.startDate.month.toString().padLeft(2, '0')}.${couple.startDate.day.toString().padLeft(2, '0')} ~ ing',
-                                              style: TextStyle(
-                                                fontFamily: typo.fontFamily,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                                color: hasImage ? Colors.white70 : customTextColor.withValues(alpha: 0.8),
-                                                shadows: hasImage ? const [Shadow(color: Colors.black45, blurRadius: 2)] : null,
-                                              ),
-                                            ),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Icon(Icons.edit_calendar, size: 14, color: hasImage ? Colors.white70 : customTextColor.withValues(alpha: 0.8)),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (bgConfig.decorations != null)
-                                for (final sticker in bgConfig.decorations!)
-                                  Positioned(
-                                    left: sticker.x * cWidth,
-                                    top: sticker.y * cHeight,
-                                    child: Transform.rotate(
-                                      angle: sticker.rotation,
-                                      child: Transform.scale(
-                                        scale: sticker.scale,
-                                        child: sticker.isText
-                                            ? Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white.withValues(alpha: 0.85),
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                                child: Text(
-                                                  sticker.stickerType,
-                                                  style: TextStyle(
-                                                    fontSize: sticker.fontSize ?? 14,
-                                                    color: sticker.textColor != null ? colorFromHex(sticker.textColor!) : Colors.black87,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              )
-                                            : Text(sticker.stickerType, style: const TextStyle(fontSize: 32)),
-                                      ),
-                                    ),
-                                  ),
-                            ],
-                          );
+                      return UnifiedCategoryTopCard(
+                        categoryKey: 'couple',
+                        title: _category.name.isNotEmpty ? _category.name : '우리 사랑한 지',
+                        symbol: '❤️',
+                        coreDDayText: '사랑한 지 ${totalDays + 1}일째',
+                        startDateText: startDateStr,
+                        reunionOrExtraBadge: reunionStr,
+                        photoUrl: hasImage ? bgConfig.imageUrl : null,
+                        fallbackEmoji: '❤️',
+                        onEditAvatar: () async {
+                          final updated = await showCategoryEditModal(context, category: _category);
+                          if (updated != null) {
+                            setState(() => _category = updated);
+                            ref.read(categoryListProvider.notifier).updateCategory(updated);
+                          }
                         },
-                      ),
-                    ),
+                        onManageSection: _showRelationshipSetupModal,
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 28),

@@ -77,4 +77,13 @@ class GoogleAuthService {
     await _ensureInitialized();
     await GoogleSignIn.instance.signOut();
   }
+
+  /// 계정 즉시 탈퇴 및 삭제 파이프라인
+  Future<void> deleteAccount() async {
+    final user = fb_auth.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await user.delete();
+    }
+    await signOut();
+  }
 }

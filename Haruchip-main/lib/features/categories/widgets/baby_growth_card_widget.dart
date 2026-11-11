@@ -13,10 +13,12 @@ class BabyGrowthCardWidget extends StatelessWidget {
     super.key,
     required this.profile,
     required this.onTapEdit,
+    this.onTapManageSections,
   });
 
   final BabyProfile profile;
   final VoidCallback onTapEdit;
+  final VoidCallback? onTapManageSections;
 
   static const _controller = BabyCategoryController();
 
@@ -241,6 +243,33 @@ class BabyGrowthCardWidget extends StatelessWidget {
                       textColor: const Color(0xFFB45309),
                       borderColor: const Color(0xFFFDE68A),
                     ),
+                    if (onTapManageSections != null)
+                      GestureDetector(
+                        onTap: onTapManageSections,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF93C5FD), width: 1),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.tune_rounded, size: 12, color: Color(0xFF2563EB)),
+                              SizedBox(width: 4),
+                              Text(
+                                '섹션 관리',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ],

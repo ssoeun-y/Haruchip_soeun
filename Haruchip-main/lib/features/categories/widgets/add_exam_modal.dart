@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../design_system/typography.dart';
-import '../../shared/widgets/haru_calendar_picker.dart';
+import '../../shared/widgets/common_date_time_picker.dart';
 import '../models/category.dart';
 import '../models/exam_model.dart';
 import 'exam_official_db_modal.dart';
@@ -177,58 +177,14 @@ class _AddExamModalContentState extends State<_AddExamModalContent> {
     }
   }
 
-  Future<DateTime?> _pickDate(DateTime initialDate) async {
-    DateTime selected = initialDate;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('날짜 선택', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-                  ],
-                ),
-                HaruCalendarPicker(
-                  initialDate: initialDate,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2035),
-                  onDateChanged: (d) {
-                    selected = d;
-                  },
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F172A),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('확인', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+  Future<DateTime?> _pickDate(DateTime initialDate) {
+    return showCommonDatePickerModal(
+      context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+      title: '날짜 선택',
     );
-    return selected;
   }
 
   String _formatDate(DateTime d) =>

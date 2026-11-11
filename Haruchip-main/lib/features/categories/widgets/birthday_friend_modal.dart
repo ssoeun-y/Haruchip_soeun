@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../design_system/colors.dart';
 import '../../../design_system/typography.dart';
-import '../../shared/widgets/haru_calendar_picker.dart';
+import '../../shared/widgets/common_date_time_picker.dart';
 import '../models/birthday_profile.dart';
 import 'custom_avatar_builder_widget.dart';
 
@@ -132,32 +132,17 @@ class _BirthdayFriendModalState extends State<_BirthdayFriendModal>
     }
   }
 
-  void _openDatePicker() {
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              HaruCalendarPicker(
-                initialDate: _selectedDate,
-                firstDate: DateTime(1920, 1, 1),
-                lastDate: DateTime(2035, 12, 31),
-                onDateChanged: (picked) {
-                  setState(() => _selectedDate = picked);
-                  Navigator.of(dialogCtx).pop();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+  void _openDatePicker() async {
+    final picked = await showCommonDatePickerModal(
+      context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(1920, 1, 1),
+      lastDate: DateTime(2035, 12, 31),
+      title: '생일 날짜 선택',
     );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
   }
 
   void _save() {

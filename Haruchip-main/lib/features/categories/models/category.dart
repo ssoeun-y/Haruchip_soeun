@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 export 'category_model.dart';
+export 'category_skin_theme.dart';
 
 /// `Category.colorHex`(`#RRGGBB`) ↔ [Color] 변환
 String colorToHex(Color color) {
