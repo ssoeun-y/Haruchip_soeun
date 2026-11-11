@@ -1172,10 +1172,10 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<ExamProfile> _getExams() {
     final meta = _category.metadata;
     final raw = meta?['exams'] as List<dynamic>?;
-    if (raw != null) {
+    if (raw != null && raw.isNotEmpty) {
       return raw.map((e) => ExamProfile.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     }
-    // Default preset if not initialized
+    // 시험이 하나도 없으면 예시 시험 1개를 보여준다.
     final now = DateTime.now();
     return [
       ExamProfile(

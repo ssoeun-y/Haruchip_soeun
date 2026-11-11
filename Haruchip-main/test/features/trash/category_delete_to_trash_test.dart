@@ -12,7 +12,7 @@ import 'package:haruchip/features/trash/providers/trash_provider.dart';
 
 /// 실제 화면의 "삭제" 메뉴를 눌렀을 때 휴지통을 거치는지 확인하는 통합 테스트.
 void main() {
-  testWidgets('시험이 하나도 없을 때 빈 화면이 375 폭에서 넘치지 않는다', (tester) async {
+  testWidgets('시험이 하나도 없으면 예시 시험이 375 폭에서 넘치지 않고 보인다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(375, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final container = ProviderContainer();
@@ -30,7 +30,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('등록된 시험 일정이 없습니다'), findsOneWidget);
+    expect(find.textContaining('정보처리기사'), findsWidgets, reason: '시험이 없으면 예시 시험이 1개 보인다');
     expect(tester.takeException(), isNull);
   });
 
@@ -92,7 +92,7 @@ void main() {
     expect(trash.single.entityType, TrashEntityType.exam);
     expect(trash.single.originalTitle, '정보처리기사 3회차');
     final saved = container.read(categoryListProvider).firstWhere((c) => c.id == category.id);
-    expect(saved.metadata!['exams'], isEmpty, reason: '마지막 시험을 지워도 샘플 시험이 다시 나타나면 안 된다');
+    expect(saved.metadata!['exams'], isEmpty, reason: '삭제한 시험은 저장 목록에서 빠진다');
     expect(container.read(planListProvider).any((p) => p.id == mirrorId), isFalse);
 
     final ok = container.read(trashServiceProvider).restore(trash.single);

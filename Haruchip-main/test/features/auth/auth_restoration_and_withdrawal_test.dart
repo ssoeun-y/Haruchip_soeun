@@ -82,7 +82,7 @@ void main() {
       expect(find.byType(LoginScreen), findsOneWidget);
     });
 
-    testWidgets('LoginScreen contains skip link to continue onboarding', (tester) async {
+    testWidgets('LoginScreen 은 로그인을 건너뛰는 링크가 없다 (구글/애플 로그인만)', (tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -91,7 +91,8 @@ void main() {
         ),
       );
 
-      expect(find.text('로그인 없이 둘러보기'), findsOneWidget);
+      expect(find.text('로그인 없이 둘러보기'), findsNothing);
+      expect(find.text('구글로 시작하기'), findsOneWidget);
     });
   });
 
