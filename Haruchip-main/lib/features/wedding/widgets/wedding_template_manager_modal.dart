@@ -59,7 +59,12 @@ class _WeddingTemplateManagerModalState
 
   void _addCustomItem() {
     final title = _customTitleController.text.trim();
-    if (title.isEmpty) return;
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('내용을 입력해주세요.')),
+      );
+      return;
+    }
 
     final currentCount = _selectedIds.length + _newCustomItems.length;
     final customItem = WeddingItem(

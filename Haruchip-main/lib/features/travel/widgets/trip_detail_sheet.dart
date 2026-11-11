@@ -50,7 +50,12 @@ class _TripDetailSheetState extends ConsumerState<TripDetailSheet>
 
   void _handleAddCustomPackingItem() {
     final text = _customItemController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('내용을 입력해주세요.')),
+      );
+      return;
+    }
 
     ref.read(travelTripListProvider.notifier).addPackingItem(widget.tripId, text);
     _customItemController.clear();
@@ -215,7 +220,12 @@ class _TripDetailSheetState extends ConsumerState<TripDetailSheet>
           ElevatedButton(
             onPressed: () {
               final title = titleController.text.trim();
-              if (title.isEmpty) return;
+              if (title.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('내용을 입력해주세요.')),
+                );
+                return;
+              }
 
               final targetDate = trip.startDate.add(Duration(days: _selectedDayNumber - 1));
               final newItem = DayScheduleItem(

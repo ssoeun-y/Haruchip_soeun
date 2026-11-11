@@ -72,7 +72,12 @@ class _AddPlanItemDialogState extends ConsumerState<AddPlanItemDialog> {
 
   void _handleAdd() {
     final title = _titleController.text.trim();
-    if (title.isEmpty) return;
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('내용을 입력해주세요.')),
+      );
+      return;
+    }
     ref.read(planListProvider.notifier).addItem(
           PlanItem(
             id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -87,7 +92,6 @@ class _AddPlanItemDialogState extends ConsumerState<AddPlanItemDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final canSubmit = _titleController.text.trim().isNotEmpty;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -261,7 +265,7 @@ class _AddPlanItemDialogState extends ConsumerState<AddPlanItemDialog> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: canSubmit ? _handleAdd : null,
+                      onPressed: _handleAdd,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.protoButtonBg,
                         disabledBackgroundColor: AppColors.surfaceMuted,

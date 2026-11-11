@@ -186,6 +186,7 @@ class AddEventBottomSheet extends ConsumerStatefulWidget {
 class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
   late String _selectedCategoryKey;
   final _titleCtrl = TextEditingController();
+  bool _titleError = false;
 
   // Pet Target Selection
   String? _selectedPetId;
@@ -279,7 +280,10 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
 
   void _handleSave() {
     final title = _titleCtrl.text.trim();
-    if (title.isEmpty) return;
+    if (title.isEmpty) {
+      setState(() => _titleError = true);
+      return;
+    }
 
     final config = RepeatConfig(
       type: _repeatType,
@@ -663,12 +667,16 @@ class _AddEventBottomSheetState extends ConsumerState<AddEventBottomSheet> {
         child: TextField(
           controller: _titleCtrl,
           style: const TextStyle(fontSize: 16, color: _kLabel, fontWeight: FontWeight.w500),
-          onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
+          onChanged: (v) => setState(() {
+            if (v.trim().isNotEmpty) _titleError = false;
+          }),
+          decoration: InputDecoration(
             hintText: '일정 제목을 입력하세요',
-            hintStyle: TextStyle(color: _kSubLabel, fontSize: 15),
+            hintStyle: const TextStyle(color: _kSubLabel, fontSize: 15),
             border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            errorText: _titleError ? '내용을 입력해주세요' : null,
+            errorStyle: const TextStyle(fontSize: 12.5, color: Color(0xFFF04452)),
           ),
         ),
       ),

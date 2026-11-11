@@ -61,9 +61,13 @@ class _WeddingItemEditModalState extends ConsumerState<WeddingItemEditModal> {
   }
 
   void _save() {
-    final title = _titleController.text.trim().isNotEmpty
-        ? _titleController.text.trim()
-        : '결혼 준비 일정';
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('내용을 입력해주세요.')),
+      );
+      return;
+    }
     final location = _locationController.text.trim();
     final memo = _memoController.text.trim();
 
